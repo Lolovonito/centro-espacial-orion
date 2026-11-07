@@ -2,13 +2,14 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Centro Espacial Orión — Junior Mission Orión</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪐</text></svg>" />
   <style>
     :root {
       --bg: #0e1622;
-      --panel: rgba(10, 18, 28, 0.9);
+      --panel: rgba(10, 18, 28, 0.88);
+      --acento: #7fe4ff;
     }
 
     * { box-sizing: border-box; }
@@ -16,91 +17,179 @@
     html, body {
       margin: 0;
       height: 100%;
+      overflow: hidden;
       background: var(--bg);
       color: #e8eef4;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+      overscroll-behavior: none;
     }
 
     #stage {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
+      inset: 0;
+      width: 100%;
+      height: 100%;
       display: block;
+      touch-action: none;
+      cursor: grab;
     }
 
     #ui {
       position: fixed;
       top: 12px;
       left: 12px;
-      width: 340px;
+      width: 300px;
       max-width: calc(100vw - 24px);
+      max-height: calc(100vh - 24px);
+      overflow-y: auto;
       background: var(--panel);
-      backdrop-filter: blur(6px);
+      backdrop-filter: blur(8px);
       border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 12px;
-      padding: 16px;
+      border-radius: 14px;
+      padding: 14px;
       z-index: 10;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-      overflow-y: auto;
     }
 
-    #ui h1 { margin: 0 0 4px; font-size: 18px; letter-spacing: 0.5px; }
-    #ui p { margin: 0 0 12px; font-size: 12px; color: #9fb0c4; }
+    #ui h1 { margin: 0 0 2px; font-size: 17px; letter-spacing: 0.4px; }
+    #ui p { margin: 0 0 10px; font-size: 11px; color: #9fb0c4; }
 
     #ui .panel {
-      margin-top: 12px;
-      padding: 10px 12px;
+      margin-top: 10px;
+      padding: 9px 11px;
       background: rgba(255, 255, 255, 0.06);
       border-radius: 8px;
     }
 
-    #ui label { font-size: 13px; color: #9fb0c4; }
+    #ui .panel[hidden] { display: none; }
+
+    #ui label { font-size: 12px; color: #9fb0c4; }
     #ui strong { color: #fff; }
+
+    #ui .hint { font-size: 11px; color: #6f87a0; margin-top: 4px; line-height: 1.4; }
+
+    #ui details summary { cursor: pointer; font-size: 12px; color: #9fb0c4; }
 
     #ui button {
       width: 100%;
       margin-top: 8px;
-      padding: 10px 12px;
+      padding: 9px 10px;
       background: rgba(60, 140, 210, 0.25);
       color: #e8eef4;
       border: 1px solid rgba(255, 255, 255, 0.18);
       border-radius: 8px;
-      font-size: 13px;
+      font-size: 12px;
       cursor: pointer;
       transition: background 0.2s;
     }
 
     #ui button:hover { background: rgba(60, 140, 210, 0.4); }
-    #ui button:disabled { opacity: 0.5; cursor: default; }
+    #ui button.reset { background: rgba(210, 80, 60, 0.2); color: #f4c9c4; }
 
-    #ui button.reset {
-      background: rgba(210, 80, 60, 0.2);
-      color: #f4c9c4;
+    #btn-interactuar {
+      position: fixed;
+      right: 22px;
+      bottom: 30px;
+      z-index: 20;
+      display: none;
+      padding: 15px 20px;
+      border-radius: 999px;
+      border: 1px solid rgba(127, 228, 255, 0.65);
+      background: rgba(30, 110, 150, 0.55);
+      color: #eaffff;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 0 22px rgba(40, 224, 255, 0.35);
+      cursor: pointer;
+      touch-action: manipulation;
     }
 
-    .hint { font-size: 11px; color: #6f87a0; margin-top: 4px; }
+    #btn-interactuar.visible { display: block; }
+    #btn-interactuar:disabled { opacity: 0.5; }
+
+    #joystick {
+      position: fixed;
+      left: 22px;
+      bottom: 22px;
+      width: 126px;
+      height: 126px;
+      z-index: 20;
+      touch-action: none;
+      user-select: none;
+    }
+
+    #joystick-base {
+      position: relative;
+      width: 126px;
+      height: 126px;
+      border-radius: 50%;
+      background: rgba(10, 18, 28, 0.5);
+      border: 2px solid rgba(127, 228, 255, 0.3);
+      backdrop-filter: blur(4px);
+    }
+
+    #joystick-knob {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 54px;
+      height: 54px;
+      margin: -27px 0 0 -27px;
+      border-radius: 50%;
+      background: rgba(127, 228, 255, 0.5);
+      border: 2px solid rgba(255, 255, 255, 0.65);
+      box-shadow: 0 0 18px rgba(127, 228, 255, 0.35);
+    }
+
+    #ayuda {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      max-width: 280px;
+      text-align: right;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #8098ae;
+      z-index: 9;
+      pointer-events: none;
+    }
+
+    @media (max-width: 640px) {
+      #ui { width: 240px; padding: 10px; }
+      #ui .panel { margin-top: 8px; padding: 8px 9px; }
+      #ui h1 { font-size: 15px; }
+      #ui p { font-size: 10px; }
+      #ayuda { display: none; }
+      #btn-interactuar { right: 16px; bottom: 24px; padding: 13px 17px; font-size: 13px; }
+    }
   </style>
 </head>
 <body>
   <canvas id="stage"></canvas>
+
   <div id="ui">
     <h1>Centro Espacial Orión</h1>
-    <p>Mundo Tierra — Preparación, investigación y control de misiones</p>
+    <p>Explora el complejo como astronauta</p>
     <div id="status" class="panel"></div>
     <div id="activity" class="panel"></div>
     <div id="score" class="panel"></div>
-    <div class="hint">Tiempo en segundos de simulación.</div>
-    <button>Plataforma de lanzamiento</button>
-    <button>Hangar de ensamblaje</button>
-    <button>Centro de control</button>
-    <button>Entrenamiento de astronautas</button>
-    <button>Laboratorio de flotabilidad</button>
-    <button>Academia Juvenil</button>
-    <button class="reset">Restablecer estado del astronauta</button>
-    <button class="reset">Restablecer puntuación</button>
+    <div id="accion" class="panel" hidden><label id="accion-texto"></label></div>
+    <details class="panel">
+      <summary>Opciones</summary>
+      <button class="reset">Restablecer estado</button>
+      <button class="reset">Restablecer puntuación</button>
+    </details>
   </div>
+
+  <button id="btn-interactuar">Interactuar</button>
+
+  <div id="joystick" aria-hidden="true">
+    <div id="joystick-base"><div id="joystick-knob"></div></div>
+  </div>
+
+  <div id="ayuda">WASD / joystick para moverte · Arrastra para girar la cámara · E para interactuar</div>
 
   <script type="importmap">
     {
@@ -111,174 +200,62 @@
   </script>
 
   <script type="module">
-    import * as THREE from 'three';
-    import {
-      initEngine,
-      activities,
-      findInstalledFloor,
-    } from './src/motor.js';
-
+    import { initEngine } from './src/motor.js';
     import { createUI } from './src/ui.js';
 
-    const stage = document.getElementById('stage');
     const statusBox = document.getElementById('status');
     const activityBox = document.getElementById('activity');
     const scoreBox = document.getElementById('score');
 
-    const { scene, camera, renderer } = initEngine('stage');
+    const { scene, camera, renderer, juego } = initEngine('stage');
     const ui = createUI(document.getElementById('ui'), {
       energy: 100,
       fun: 100,
       hygiene: 100,
       social: 100,
     });
+    juego.conectarUI(ui);
 
-    const statusKeys = ['energy', 'fun', 'hygiene', 'social'];
-    const updateStatus = () => {
-      const values = statusKeys.map((key) => ({
-        label: key.charAt(0).toUpperCase() + key.slice(1),
-        value: Math.round(ui.state[key]),
-      }));
-      statusBox.innerHTML = values
-        .map((v) => `<label>${v.label}: <strong>${v.value}</strong></label>`)
+    const etiquetas = { energy: 'Energía', fun: 'Diversión', hygiene: 'Higiene', social: 'Social' };
+    const clavesEstado = ['energy', 'fun', 'hygiene', 'social'];
+
+    const pintarEstado = () => {
+      statusBox.innerHTML = clavesEstado
+        .map((clave) => `<label>${etiquetas[clave]}: <strong>${Math.round(ui.state[clave])}</strong></label>`)
         .join('');
     };
 
-    const updateActivityUI = () => {
-      const activity = ui.state.currentActivity;
-      if (!activity) {
-        activityBox.innerHTML = '<div class="hint">Selecciona una instalación.</div>';
+    const pintarActividad = () => {
+      const actividad = ui.state.currentActivity;
+      if (!actividad) {
+        activityBox.innerHTML = '<div class="hint">Acércate a una instalación para interactuar.</div>';
         return;
       }
-      const label = activity.name;
-      const duration = activity.duration;
+      const restante = Math.max(0, Math.ceil(actividad.duration - ui.state.timer));
       activityBox.innerHTML =
-        `<label>Actividad: <strong>${label}</strong></label>` +
-        `<div id="remainingTime" style="margin-top:6px;font-weight:bold;color:#ffe27a;">Tiempo: ${duration}s</div>`;
+        `<label>Actividad: <strong>${actividad.name}</strong></label>` +
+        `<div class="hint" style="color:#ffe27a;font-weight:700;margin-top:6px">Tiempo restante: ${restante}s</div>`;
     };
 
-    const updateScoreUI = () => {
+    const pintarPuntuacion = () => {
       scoreBox.innerHTML =
         `<label>Investigación: <strong>${ui.state.score.research}</strong></label>` +
         `<div class="hint">Experiencia: ${ui.state.score.experience}</div>`;
     };
 
-    ui.state.setTimerHandle = (handler) => {
-      ui.timerHandle = handler;
-    };
-
-    const tick = (now) => {
+    let anterior = performance.now();
+    const tick = (ahora) => {
       requestAnimationFrame(tick);
-
-      if (!ui.state.currentActivity) {
-        renderer.render(scene, camera);
-        updateStatus();
-        updateActivityUI();
-        updateScoreUI();
-        return;
-      }
-
-      ui.state.timer += 16;
-      const seconds = Math.floor(ui.state.timer);
-      const remaining = ui.state.currentActivity.duration - seconds;
-      const remainingEl = document.getElementById('remainingTime');
-      if (remainingEl) {
-        remainingEl.textContent = `Tiempo: ${remaining}s`;
-      }
-      if (seconds >= ui.state.currentActivity.duration) {
-        if (ui.state.currentActivity.researchPoints != null) {
-          ui.state.score.research += ui.state.currentActivity.researchPoints;
-        }
-        if (ui.state.currentActivity.experiencePoints != null) {
-          ui.state.score.experience += ui.state.currentActivity.experiencePoints;
-        }
-
-        ui.state.currentActivity = null;
-        ui.stopTimer();
-        updateActivityUI();
-        updateScoreUI();
-        updateStatus();
-      }
-
+      const dt = Math.min((ahora - anterior) / 1000, 0.1);
+      anterior = ahora;
+      ui.actualizar(dt);
+      juego.actualizar(dt);
+      pintarEstado();
+      pintarActividad();
+      pintarPuntuacion();
       renderer.render(scene, camera);
-      updateStatus();
-      updateActivityUI();
-      updateScoreUI();
     };
-
     requestAnimationFrame(tick);
-
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-    let target = null;
-    let targetAlpha = null;
-
-    const onMouseMove = (event) => {
-      const rect = stage.getBoundingClientRect();
-      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-      if (targetAlpha != null) {
-        camera.position.x += (target.position.x - camera.position.x) * 0.08;
-        camera.position.y += (target.position.y - camera.position.y) * 0.08;
-        camera.position.z += (target.position.z - camera.position.z) * 0.08;
-        camera.lookAt(target.position);
-        camera.position.x += (targetAlpha - camera.position.x) * 0.08;
-        camera.position.y += (targetAlpha - camera.position.y) * 0.08;
-        camera.position.z += (targetAlpha - camera.position.z) * 0.08;
-        camera.lookAt(target.position);
-      }
-    };
-
-    const onClick = (event) => {
-      if (ui.state.currentActivity) return;
-      const hit = findInstalledFloor(scene, raycaster, mouse);
-      if (hit && hit.userData.instalacion) {
-        const key = hit.userData.instalacion;
-        const activity = activities[key];
-        if (activity) {
-          startActivity(activity);
-          ui.enableButtons(false);
-          ui.state.timerHandle = setTimeout(() => {
-            if (ui.state.currentActivity) {
-              const delta = ui.state.currentActivity.duration - Math.floor(ui.state.timer);
-              if (delta <= 0) {
-                ui.state.timer = ui.state.currentActivity.duration;
-                if (ui.state.currentActivity.researchPoints != null) {
-                  ui.state.score.research += ui.state.currentActivity.researchPoints;
-                }
-                if (ui.state.currentActivity.experiencePoints != null) {
-                  ui.state.score.experience += ui.state.currentActivity.experiencePoints;
-                }
-                ui.state.currentActivity = null;
-                updateActivityUI();
-                updateScoreUI();
-                updateStatus();
-                ui.state.timerHandle = setTimeout(() => {
-                  ui.state.timerHandle = null;
-                }, 1000);
-              }
-            }
-          }, 1000);
-        }
-      }
-    };
-
-    const startActivity = (activity) => {
-      ui.state.currentActivity = activity;
-      ui.state.timer = 0;
-      activityBox.innerHTML =
-        `<label>Actividad: <strong>${activity.name}</strong></label>` +
-        `<div id="remainingTime" style="margin-top:6px;font-weight:bold;color:#ffe27a;">Tiempo: ${activity.duration}s</div>`;
-      updateActivityUI();
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('click', onClick);
-
-    ui.state = ui.state || { energy: 100, fun: 100, hygiene: 100, social: 100, score: { research: 0, experience: 0 } };
-
-    updateStatus();
-    updateScoreUI();
   </script>
 </body>
 </html>

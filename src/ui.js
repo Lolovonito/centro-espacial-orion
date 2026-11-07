@@ -1,6 +1,4 @@
-import { activities } from './motor.js';
-
-const CLAVES_BOTONES = ['plataforma', 'hangar', 'control', 'entrenamiento', 'flotabilidad', 'academia'];
+import { activities } from './actividades.js';
 
 function limitar(valor) {
   return Math.max(0, Math.min(100, valor));
@@ -16,21 +14,18 @@ export function createUI(raiz, estadoInicial = {}) {
     currentActivity: null,
     timer: 0,
     timerHandle: null,
+    proxima: null,
+    efectosAcumulados: 0,
   };
 
-  const botones = Array.from(raiz.querySelectorAll('button'));
-  const botonesActividad = botones.filter((boton) => !boton.classList.contains('reset'));
-  const botonesReset = botones.filter((boton) => boton.classList.contains('reset'));
+  const botonesReset = Array.from(raiz.querySelectorAll('button.reset'));
+  const accionPanel = raiz.querySelector('#accion');
+  const accionTexto = raiz.querySelector('#accion-texto');
+  const botonAccion = document.getElementById('btn-interactuar') || raiz.querySelector('#btn-interactuar');
   let habilitados = true;
 
   function habilitar(valor) {
     habilitados = valor;
-    botonesActividad.forEach((boton) => {
-      boton.disabled = !valor;
-    });
-    botonesReset.forEach((boton) => {
-      boton.disabled = false;
-    });
   }
 
   function detenerTemporizador() {
@@ -40,13 +35,39 @@ export function createUI(raiz, estadoInicial = {}) {
     }
   }
 
+  function actualizarAccion() {
+    const actividad = estado.proxima ? activities[estado.proxima] : null;
+    const visible = !!actividad && !estado.currentActivity;
+    if (accionPanel) accionPanel.hidden = !visible;
+    if (accionTexto && actividad) {
+      accionTexto.innerHTML = `Cerca de: <strong>${actividad.name}</strong>`;
+    }
+    if (botonAccion) {
+      botonAccion.classList.toggle('visible', visible);
+      botonAccion.disabled = !visible;
+      botonAccion.textContent = 'Interactuar';
+    }
+  }
+
   function iniciarActividad(clave) {
-    if (estado.currentActivity) return;
+    if (estado.currentActivity) return false;
     const actividad = activities[clave];
-    if (!actividad) return;
+    if (!actividad) return false;
     estado.currentActivity = actividad;
     estado.timer = 0;
-    habilitar(false);
+    estado.efectosAcumulados = 0;
+    actualizarAccion();
+    return true;
+  }
+
+  function setProximidad(clave) {
+    estado.proxima = clave || null;
+    actualizarAccion();
+  }
+
+  function interactuar() {
+    if (estado.currentActivity || !estado.proxima) return false;
+    return iniciarActividad(estado.proxima);
   }
 
   function aplicarEfectos(efectos) {
@@ -56,11 +77,31 @@ export function createUI(raiz, estadoInicial = {}) {
     if (efectos.social) estado.social = limitar(estado.social + efectos.social);
   }
 
-  botonesActividad.forEach((boton, indice) => {
-    const clave = CLAVES_BOTONES[indice];
-    if (!clave) return;
-    boton.addEventListener('click', () => iniciarActividad(clave));
-  });
+  function actualizar(dt) {
+    if (!estado.currentActivity) return;
+    estado.timer += dt;
+    estado.efectosAcumulados += dt;
+    while (estado.efectosAcumulados >= 1) {
+      aplicarEfectos(estado.currentActivity.effects || {});
+      estado.efectosAcumulados -= 1;
+    }
+    if (estado.timer >= estado.currentActivity.duration) {
+      const actividad = estado.currentActivity;
+      estado.score.research += actividad.researchPoints || 0;
+      estado.score.experience += actividad.experiencePoints || 0;
+      estado.currentActivity = null;
+      estado.timer = 0;
+      estado.efectosAcumulados = 0;
+      actualizarAccion();
+    }
+  }
+
+  if (botonAccion) {
+    botonAccion.addEventListener('click', (evento) => {
+      evento.stopPropagation();
+      interactuar();
+    });
+  }
 
   if (botonesReset[0]) {
     botonesReset[0].addEventListener('click', () => {
@@ -70,8 +111,9 @@ export function createUI(raiz, estadoInicial = {}) {
       estado.social = 100;
       estado.currentActivity = null;
       estado.timer = 0;
+      estado.efectosAcumulados = 0;
       detenerTemporizador();
-      habilitar(true);
+      actualizarAccion();
     });
   }
 
@@ -86,17 +128,12 @@ export function createUI(raiz, estadoInicial = {}) {
     evento.stopPropagation();
   });
 
-  setInterval(() => {
-    if (!estado.currentActivity) {
-      if (!habilitados) habilitar(true);
-      return;
-    }
-    aplicarEfectos(estado.currentActivity.effects || {});
-  }, 1000);
-
   return {
     state: estado,
     enableButtons: habilitar,
     stopTimer: detenerTemporizador,
+    setProximidad,
+    interactuar,
+    actualizar,
   };
 }

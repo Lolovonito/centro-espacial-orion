@@ -2,4 +2,275 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewpo
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Centro Espacial Orión — Junior Mission Orión</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪐</text></svg>" />
+  <style>
+    :root {
+      --bg: #0e1622;
+      --panel: rgba(10, 18, 28, 0.9);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: #e8eef4;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+    }
+
+    #stage {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+
+    #ui {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      width: 340px;
+      max-width: calc(100vw - 24px);
+      background: var(--panel);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 16px;
+      z-index: 10;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      overflow-y: auto;
+    }
+
+    #ui h1 { margin: 0 0 4px; font-size: 18px; letter-spacing: 0.5px; }
+    #ui p { margin: 0 0 12px; font-size: 12px; color: #9fb0c4; }
+
+    #ui .panel {
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+    }
+
+    #ui label { font-size: 13px; color: #9fb0c4; }
+    #ui strong { color: #fff; }
+
+    #ui button {
+      width: 100%;
+      margin-top: 8px;
+      padding: 10px 12px;
+      background: rgba(60, 140, 210, 0.25);
+      color: #e8eef4;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    #ui button:hover { background: rgba(60, 140, 210, 0.4); }
+    #ui button:disabled { opacity: 0.5; cursor: default; }
+
+    #ui button.reset {
+      background: rgba(210, 80, 60, 0.2);
+      color: #f4c9c4;
+    }
+
+    .hint { font-size: 11px; color: #6f87a0; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <div id="ui">
+    <h1>Centro Espacial Orión</h1>
+    <p>Mundo Tierra — Preparación, investigación y control de misiones</p>
+    <div id="status" class="panel"></div>
+    <div id="activity" class="panel"></div>
+    <div id="score" class="panel"></div>
+    <div class="hint">Tiempo en segundos de simulación.</div>
+    <button>Plataforma de lanzamiento</button>
+    <button>Hangar de ensamblaje</button>
+    <button>Centro de control</button>
+    <button>Entrenamiento de astronautas</button>
+    <button>Laboratorio de flotabilidad</button>
+    <button>Academia Juvenil</button>
+    <button class="reset">Restablecer estado del astronauta</button>
+    <button class="reset">Restablecer puntuación</button>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import {
+      initEngine,
+      activities,
+      findInstalledFloor,
+    } from './src/motor.js';
+
+    import { createUI } from './src/ui.js';
+
+    const stage = document.getElementById('stage');
+    const statusBox = document.getElementById('status');
+    const activityBox = document.getElementById('activity');
+    const scoreBox = document.getElementById('score');
+
+    const { scene, camera, renderer } = initEngine('stage');
+    const ui = createUI(document.getElementById('ui'), {
+      energy: 100,
+      fun: 100,
+      hygiene: 100,
+      social: 100,
+    });
+
+    const statusKeys = ['energy', 'fun', 'hygiene', 'social'];
+    const updateStatus = () => {
+      const values = statusKeys.map((key) => ({
+        label: key.charAt(0).toUpperCase() + key.slice(1),
+        value: Math.round(ui.state[key]),
+      }));
+      statusBox.innerHTML = values
+        .map((v) => `<label>${v.label}: <strong>${v.value}</strong></label>`)
+        .join('');
+    };
+
+    const updateActivityUI = () => {
+      const activity = ui.state.currentActivity;
+      if (!activity) {
+        activityBox.innerHTML = '<div class="hint">Selecciona una instalación.</div>';
+        return;
+      }
+      const label = activity.name;
+      const duration = activity.duration;
+      activityBox.innerHTML =
+        `<label>Actividad: <strong>${label}</strong></label>` +
+        `<div id="remainingTime" style="margin-top:6px;font-weight:bold;color:#ffe27a;">Tiempo: ${duration}s</div>`;
+    };
+
+    const updateScoreUI = () => {
+      scoreBox.innerHTML =
+        `<label>Investigación: <strong>${ui.state.score.research}</strong></label>` +
+        `<div class="hint">Experiencia: ${ui.state.score.experience}</div>`;
+    };
+
+    ui.state.setTimerHandle = (handler) => {
+      ui.timerHandle = handler;
+    };
+
+    const tick = (now) => {
+      requestAnimationFrame(tick);
+
+      if (!ui.state.currentActivity) {
+        renderer.render(scene, camera);
+        updateStatus();
+        updateActivityUI();
+        updateScoreUI();
+        return;
+      }
+
+      ui.state.timer += 16;
+      const seconds = Math.floor(ui.state.timer);
+      const remaining = ui.state.currentActivity.duration - seconds;
+      const remainingEl = document.getElementById('remainingTime');
+      if (remainingEl) {
+        remainingEl.textContent = `Tiempo: ${remaining}s`;
+      }
+      if (seconds >= ui.state.currentActivity.duration) {
+        if (ui.state.currentActivity.researchPoints != null) {
+          ui.state.score.research += ui.state.currentActivity.researchPoints;
+        }
+        if (ui.state.currentActivity.experiencePoints != null) {
+          ui.state.score.experience += ui.state.currentActivity.experiencePoints;
+        }
+
+        ui.state.currentActivity = null;
+        ui.stopTimer();
+        updateActivityUI();
+        updateScoreUI();
+        updateStatus();
+      }
+
+      renderer.render(scene, camera);
+      updateStatus();
+      updateActivityUI();
+      updateScoreUI();
+    };
+
+    requestAnimationFrame(tick);
+
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let target = null;
+    let targetAlpha = null;
+
+    const onMouseMove = (event) => {
+      const rect = stage.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      if (targetAlpha != null) {
+        camera.position.x += (target.position.x - camera.position.x) * 0.08;
+        camera.position.y += (target.position.y - camera.position.y) * 0.08;
+        camera.position.z += (target.position.z - camera.position.z) * 0.08;
+        camera.lookAt(target.position);
+        camera.position.x += (targetAlpha - camera.position.x) * 0.08;
+        camera.position.y += (targetAlpha - camera.position.y) * 0.08;
+        camera.position.z += (targetAlpha - camera.position.z) * 0.08;
+        camera.lookAt(target.position);
+      }
+    };
+
+    const onClick = (event) => {
+      if (ui.state.currentActivity) return;
+      const hit = findInstalledFloor(scene, raycaster, mouse);
+      if (hit && hit.userData.instalacion) {
+        const key = hit.userData.instalacion;
+        const activity = activities[key];
+        if (activity) {
+          startActivity(activity);
+          ui.enableButtons(false);
+          ui.state.timerHandle = setTimeout(() => {
+            if (ui.state.currentActivity) {
+              const delta = ui.state.currentActivity.duration - Math.floor(ui.state.timer);
+              if (delta <= 0) {
+                ui.state.timer = ui.state.currentActivity.duration;
+                if (ui.state.currentActivity.researchPoints != null) {
+                  ui.state.score.research += ui.state.currentActivity.researchPoints;
+                }
+                if (ui.state.currentActivity.experiencePoints != null) {
+                  ui.state.score.experience += ui.state.currentActivity.experiencePoints;
+                }
+                ui.state.currentActivity = null;
+                updateActivityUI();
+                updateScoreUI();
+                updateStatus();
+                ui.state.timerHandle = setTimeout(() => {
+                  ui.state.timerHandle = null;
+                }, 1000);
+              }
+            }
+          }, 1000);
+        }
+      }
+    };
+
+    const startActivity = (activity) => {
+      ui.state.currentActivity = activity;
+      ui.state.timer = 0;
+      activityBox.innerHTML =
+        `<label>Actividad: <strong>${activity.name}</strong></label>` +
+        `<div id="remainingTime" style="margin-top:6px;font-weight:bold;color:#ffe27a;">Tiempo: ${activity.duration}s</div>`;
+      updateActivityUI();
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('click', onClick);
+
+    ui.state = ui.state || { energy: 100, fun: 100, hygiene: 100, social: 100, score: { research: 0, experience: 0 } };
+
+    updateStatus();
+    updateScoreUI();
+  </script>
+</body>
+</html>

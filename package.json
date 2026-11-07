@@ -1,1 +1,14 @@
-ì(€€‰¹…µ”ˆè€‰•¹ÑÉ¼µ•ÍÁ…¥…°µ½É¥½¸ˆ°(€€‰Ù•ÉÍ¥½¸ˆè€ˆÄ¸À¸Àˆ°(€€‰‘•ÍÉ¥ÁÑ¥½¸ˆè€‰•¹ÑÉ¼ÍÁ…¥…°=É§Í¸€´¥¹ÍÑ…±…¥½¹•Ì•‘Õ…Ñ¥Ù…ÌÁ…É„)Õ¹¥½È5¥ÍÍ¥½¸=É§Í¸€¡Q¡É•”¹©ÌÈÄÈà¤ˆ°(€€‰±¥•¹Í”ˆè€‰U91%9Mˆ°(€€‰‘•Á•¹‘•¹¥•Ìˆèì(€€€€‰Ñ¡É•”ˆè€ˆÀ¸ÄÈà¸Àˆ(€ô)ô(
+{
+  "name": "centro-espacial-orion",
+  "version": "1.0.0",
+  "description": "Centro Espacial OriÃ³n - integraciÃ³n educativa para Junior Mission OriÃ³n",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "npx serve .",
+    "deploy": "firebase deploy --only hosting"
+  },
+  "dependencies": {
+    "three": "0.128.0"
+  }
+}

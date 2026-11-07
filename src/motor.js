@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 import { crearMundoTerra } from './mundo-terra.js';
 import { crearInstalaciones } from './instalaciones.js';
 import { crearDetallesComplejo } from './instalaciones2.js';
@@ -23,7 +23,6 @@ export function initEngine(idLienzo) {
   const renderizador = new THREE.WebGLRenderer({
     canvas: lienzo,
     antialias: true,
-    powerPreference: 'high-performance',
   });
   renderizador.setSize(window.innerWidth, window.innerHeight);
   renderizador.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));

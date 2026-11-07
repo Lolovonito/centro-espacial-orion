@@ -156,6 +156,41 @@
       pointer-events: none;
     }
 
+    #cargando {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0e1622;
+      color: #9fd8ff;
+      font-size: 14px;
+      letter-spacing: 0.4px;
+      z-index: 30;
+    }
+
+    #cargando[hidden] { display: none; }
+
+    #errores {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      z-index: 40;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(120, 20, 20, 0.94);
+      border: 1px solid rgba(255, 120, 120, 0.6);
+      color: #ffe6e6;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      max-height: 40vh;
+      overflow: auto;
+    }
+
+    #errores[hidden] { display: none; }
+
     @media (max-width: 640px) {
       #ui { width: 240px; padding: 10px; }
       #ui .panel { margin-top: 8px; padding: 8px 9px; }
@@ -168,6 +203,8 @@
 </head>
 <body>
   <canvas id="stage"></canvas>
+  <div id="cargando">Cargando Centro Espacial Orión…</div>
+  <div id="errores" hidden></div>
 
   <div id="ui">
     <h1>Centro Espacial Orión</h1>
@@ -191,12 +228,30 @@
 
   <div id="ayuda">WASD / joystick para moverte · Arrastra para girar la cámara · E para interactuar</div>
 
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "./vendor/three.module.js"
-      }
-    }
+  <script>
+    (function () {
+      const capa = document.getElementById('cargando');
+      const errores = document.getElementById('errores');
+      window.__orionMostrarError = function (mensaje) {
+        if (errores) {
+          errores.hidden = false;
+          errores.textContent = 'Error: ' + mensaje;
+        }
+        if (capa) capa.textContent = 'No se pudo iniciar el juego.';
+      };
+      window.addEventListener('error', function (evento) {
+        window.__orionMostrarError(evento.message || 'Error de carga');
+      });
+      window.addEventListener('unhandledrejection', function (evento) {
+        const razon = evento.reason;
+        window.__orionMostrarError((razon && (razon.stack || razon.message)) || String(razon));
+      });
+      setTimeout(function () {
+        if (!window.__orionIniciado) {
+          window.__orionMostrarError('El juego no respondió en 8 s. El navegador podría no soportar WebGL o módulos ES.');
+        }
+      }, 8000);
+    })();
   </script>
 
   <script type="module">
@@ -254,6 +309,11 @@
       pintarActividad();
       pintarPuntuacion();
       renderer.render(scene, camera);
+      if (!window.__orionIniciado) {
+        window.__orionIniciado = true;
+        const capa = document.getElementById('cargando');
+        if (capa) capa.hidden = true;
+      }
     };
     requestAnimationFrame(tick);
   </script>

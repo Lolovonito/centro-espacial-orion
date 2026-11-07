@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 import { POSICIONES } from './coordenadas.js';
 
 const MATERIAL_SUELO = new THREE.MeshStandardMaterial({ color: 0x1b3324, roughness: 0.98 });

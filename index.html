@@ -4502,6 +4502,21 @@ window.JSM = window.JSM || {};
     });
     addEventListener('keyup', (e) => { Game.keys[e.key.toLowerCase()] = false; if (e.code === 'Space') Game.keys[' '] = false; });
     addEventListener('blur', () => { Game.keys = {}; });
+
+    /* --- mando / gamepad (Gamepad API) --- */
+    Game.gp = { ix: 0, iz: 0, lookX: 0, lookY: 0, run: false };
+    Game.gpPrev = new Uint8Array(0);
+    Game.gpIndex = null;
+    Game.gamepads = {};
+    addEventListener('gamepadconnected', (e) => {
+      Game.gamepads[e.gamepad.index] = e.gamepad;
+      Game.gpIndex = e.gamepad.index;
+      try { UI.toast('Mando conectado: ' + (e.gamepad.id || 'Mando'), '', 'gamepad'); } catch (er) { }
+    });
+    addEventListener('gamepaddisconnected', (e) => {
+      if (Game.gamepads[e.gamepad.index]) delete Game.gamepads[e.gamepad.index];
+      if (Game.gpIndex === e.gamepad.index) Game.gpIndex = null;
+    });
     let down = null;
     canvas.addEventListener('pointerdown', (e) => {
       canvas.focus();
@@ -4534,6 +4549,35 @@ window.JSM = window.JSM || {};
       if (Game.mode === 'creator') { Game.cr.zoom = U.clamp(Game.cr.zoom * f, 1.4, 7); return; }
       Game.camDist = U.clamp(Game.camDist * f, 3.5, Game.camMode === 'orbit' || JSM.Build.active ? 70 : 16);
     }, { passive: false });
+  };
+
+  /* --- lectura del mando cada frame (ejes no disparan eventos) --- */
+  Game.pollGamepad = function () {
+    if (Game.mode !== 'play') return;
+    const gp = Game.gp; gp.ix = gp.iz = gp.lookX = gp.lookY = 0;
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    let pad = null;
+    if (Game.gpIndex != null && pads[Game.gpIndex] && pads[Game.gpIndex].connected) pad = pads[Game.gpIndex];
+    else for (let i = 0; i < pads.length; i++) { if (pads[i] && pads[i].connected) { pad = pads[i]; Game.gpIndex = i; break; } }
+    if (!pad) return;
+    const dead = 0.18;
+    const ax = (v) => Math.abs(v) > dead ? v : 0;
+    gp.ix = ax(pad.axes[0]); gp.iz = -ax(pad.axes[1]);
+    gp.lookX = ax(pad.axes[2]); gp.lookY = ax(pad.axes[3]);
+    const pressed = (i) => i < pad.buttons.length && (pad.buttons[i].pressed || pad.buttons[i].value > 0.5);
+    const now = new Uint8Array(pad.buttons.length);
+    for (let i = 0; i < pad.buttons.length; i++) now[i] = pressed(i) ? 1 : 0;
+    const prev = Game.gpPrev || new Uint8Array(0);
+    const rise = (i) => now[i] === 1 && (!prev[i] || prev[i] === 0);
+    Game.gpPrev = now;
+    gp.run = pressed(4) || (pad.axes.length > 5 && pad.axes[5] > 0.4);
+    if (rise(0)) { Game.interact(); }              // A / cruz
+    if (rise(2)) { Game.scan(); }                 // X / cuadrado
+    if (rise(1)) { Game.jumpQueued = true; Game.keys[' '] = true; }  // B / círculo
+    if (rise(3)) { Game.toggleBuild(); }          // Y / triángulo
+    if (rise(9)) Game.onEscape();                 // Inicio / Opciones
+    if (rise(12)) Game.setSpeed(4);               // cruceta arriba
+    if (rise(13)) Game.setSpeed(0);               // cruceta abajo
   };
   Game.bindTouch = function () {
     const touch = matchMedia('(pointer: coarse)').matches; Game.isTouch = touch;
@@ -4847,6 +4891,7 @@ window.JSM = window.JSM || {};
   Game.update = function (dt) {
     const g = Sim.g, P = Game.player, w = Game.world, planet = D.PLANETS[g.planet];
     const paused = !!UI.modalOpen;
+    Game.pollGamepad();
     let speed = paused ? 0 : Game.speed;
     if (Game.action && Game.action.A && Game.action.A.timeScale && !paused) speed = Math.max(speed, 1) * Game.action.A.timeScale;
     const dtMin = dt * GAME_MIN_PER_SEC * speed;
@@ -4909,15 +4954,15 @@ window.JSM = window.JSM || {};
     let ix = 0, iz = 0;
     const blocked = paused || !!UI.dialogOpts;
     if (!blocked) {
-      if (K['w'] || K['arrowup']) iz += 1; if (K['s'] || K['arrowdown']) iz -= 1;
-      if (K['a'] || K['arrowleft']) ix -= 1; if (K['d'] || K['arrowright']) ix += 1;
+      if (K['w'] || K['arrowup'] || Game.gp.iz > 0) iz += 1; if (K['s'] || K['arrowdown'] || Game.gp.iz < 0) iz -= 1;
+      if (K['a'] || K['arrowleft'] || Game.gp.ix < 0) ix -= 1; if (K['d'] || K['arrowright'] || Game.gp.ix > 0) ix += 1;
       if (Game.joy) { ix += Game.joy.x; iz -= Game.joy.y; }
     }
     const moving = Math.hypot(ix, iz) > 0.15;
     if (moving && Game.action) Game.cancelAction();
     if (moving && UI.ctxItems) UI.hideContext();
     if (Game.action) Game.tickAction(dt, dtMin);
-    const run = (K['shift'] || Game.touchRun) && moving;
+    const run = (K['shift'] || Game.touchRun || Game.gp.run) && moving;
     const fx = -Math.sin(Game.camYaw), fz = -Math.cos(Game.camYaw);
     const rx = -fz, rz = fx;
     let mx = fx * iz + rx * ix, mz = fz * iz + rz * ix;
@@ -4927,6 +4972,13 @@ window.JSM = window.JSM || {};
     const accel = P.onGround ? 14 : 3.5;
     P.vel.x = U.damp(P.vel.x, mx * speedMax, accel, dt);
     P.vel.z = U.damp(P.vel.z, mz * speedMax, accel, dt);
+    // mira con el palo derecho del mando
+    if (!blocked && !JSM.Build.active && (Game.gp.lookX || Game.gp.lookY)) {
+      const s = Game.settings.sens;
+      Game.camYaw -= Game.gp.lookX * 0.014 * s;
+      Game.camPitch = U.clamp(Game.camPitch + Game.gp.lookY * 0.011 * s * (Game.settings.invertY ? -1 : 1), -0.15, Game.camMode === 'orbit' ? 1.45 : 1.2);
+      Game.dragT = 1.2;
+    }
     // salto
     if (blocked || Game.action) Game.jumpQueued = false;
     if (!blocked && (K[' '] || Game.jumpQueued) && P.onGround && !Game.action) {
@@ -4993,7 +5045,7 @@ window.JSM = window.JSM || {};
     // indicador de interacción
     if (!Game.action && !UI.ctxItems && !UI.dialogOpts && !JSM.Build.active) {
       const it = Game.findInteractable();
-      UI.prompt(it ? '<span class="kbd">' + (Game.isTouch ? 'Usar' : 'E') + '</span> ' + U.esc(it.label) : null);
+      UI.prompt(it ? '<span class="kbd">' + (Game.isTouch ? 'Usar' : Game.gpIndex != null ? 'A' : 'E') + '</span> ' + U.esc(it.label) : null);
     } else if (!JSM.Build.active) UI.prompt(null);
     if (!Game.action) UI.actionBar(null);
     if (Game.talking && Game.talking.astro.group.position.distanceTo(P.pos) > 5) Game.endTalk();
@@ -6856,7 +6908,7 @@ window.JSM = window.JSM || {};
         setPower(R, !(src.type && (src.broken || src.powered === false)));
         I.houseTimer = 0;
         try { G.renderer.compile(sc, cam); } catch (e) { }
-        UI.toast('Estás dentro de: ' + R.name + '. Acércate a los círculos brillantes y pulsa ' + (G.isTouch ? 'Usar' : 'E') + '.', '', 'rocket');
+        UI.toast('Estás dentro de: ' + R.name + '. Acércate a los círculos brillantes y pulsa ' + (G.isTouch ? 'Usar' : G.gpIndex != null ? 'A' : 'E') + '.', '', 'rocket');
       } catch (e) { JSM.reportError('Interior: ' + e.message, e.stack); I.active = false; }
       setTimeout(() => fade.classList.remove('on'), 120);
     }, 380);
@@ -6911,8 +6963,8 @@ window.JSM = window.JSM || {};
     I.t += dt;
     let ix = 0, iz = 0; const blocked = paused || !!UI.dialogOpts;
     if (!blocked) {
-      if (K['w'] || K['arrowup']) iz += 1; if (K['s'] || K['arrowdown']) iz -= 1;
-      if (K['a'] || K['arrowleft']) ix -= 1; if (K['d'] || K['arrowright']) ix += 1;
+      if (K['w'] || K['arrowup'] || G.gp.iz > 0) iz += 1; if (K['s'] || K['arrowdown'] || G.gp.iz < 0) iz -= 1;
+      if (K['a'] || K['arrowleft'] || G.gp.ix < 0) ix -= 1; if (K['d'] || K['arrowright'] || G.gp.ix > 0) ix += 1;
       if (G.joy) { ix += G.joy.x; iz -= G.joy.y; }
     }
     const moving = Math.hypot(ix, iz) > 0.15;
@@ -6920,11 +6972,17 @@ window.JSM = window.JSM || {};
     if (moving && UI.ctxItems) UI.hideContext();
     if (G.action) G.tickAction(dt, dtMin);
     G.jumpQueued = false;
-    const run = (K['shift'] || G.touchRun) && moving;
+    const run = (K['shift'] || G.touchRun || G.gp.run) && moving;
     const fx = -Math.sin(G.camYaw), fz = -Math.cos(G.camYaw), rx = -fz, rz = fx;
     let mx = fx * iz + rx * ix, mz = fz * iz + rz * ix; const ml = Math.hypot(mx, mz); if (ml > 1) { mx /= ml; mz /= ml; }
     const sp = run ? 5.2 : 3.1;
     P.vel.x = U.damp(P.vel.x, mx * sp, 14, dt); P.vel.z = U.damp(P.vel.z, mz * sp, 14, dt);
+    // mira con el palo derecho del mando (interior)
+    if (!blocked && (G.gp.lookX || G.gp.lookY)) {
+      const s = G.settings.sens;
+      G.camYaw -= G.gp.lookX * 0.014 * s;
+      G.camPitch = Math.min(Math.max(G.camPitch + G.gp.lookY * 0.011 * s * (G.settings.invertY ? -1 : 1), -0.15), 1.3);
+    }
     if (G.action) { P.vel.x = P.vel.z = 0; }
     I.x += P.vel.x * dt; I.z += P.vel.z * dt;
     const m = 0.55; I.x = clamp(I.x, -R.w / 2 + m, R.w / 2 - m); I.z = clamp(I.z, -R.d / 2 + m, R.d / 2 - m);
@@ -6946,7 +7004,7 @@ window.JSM = window.JSM || {};
     let best = null, bd = 1e9;
     R.hot.forEach(h => { const d = U.dist2(I.x, I.z, h.x, h.z); const near = d < h.r; h.ring.material.opacity = near ? 1 : 0.5 + Math.sin(I.t * 3 + h.x) * 0.2; h.ring.scale.setScalar(near ? 1.15 + Math.sin(I.t * 6) * 0.05 : 1); if (near && d < bd) { bd = d; best = h; } });
     I.hot = best; if (best) I.curHot = best;
-    if (!G.action && !UI.ctxItems && !UI.dialogOpts) UI.prompt(best ? '<span class="kbd">' + (G.isTouch ? 'Usar' : 'E') + '</span> ' + U.esc(best.label) : null); else if (G.action) UI.prompt(null);
+    if (!G.action && !UI.ctxItems && !UI.dialogOpts) UI.prompt(best ? '<span class="kbd">' + (G.isTouch ? 'Usar' : G.gpIndex != null ? 'A' : 'E') + '</span> ' + U.esc(best.label) : null); else if (G.action) UI.prompt(null);
     // aire y oxígeno
     const n = g.player.needs, col = Sim.colony(g);
     if (planet.breathable) n.oxygen = Math.min(100, n.oxygen + 20 * dt);

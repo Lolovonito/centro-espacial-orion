@@ -632,6 +632,17 @@ body{font-size:15px}
   .fl-dash{height:15%}
 }
 #app.inside .nametag{display:none!important}
+
+/* Centro Espacial Orión: fichas */
+.sc-tab{display:grid;gap:6px}
+.sc-tab>div{display:grid;grid-template-columns:minmax(110px,38%) 1fr auto;gap:10px;align-items:baseline;padding:8px 12px;border-radius:10px;background:rgba(111,182,255,.08);border:1px solid rgba(150,178,255,.16)}
+.sc-tab span{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#97A3C7)}
+.sc-tab b{font-size:14.5px;line-height:1.4;font-weight:600}
+.sc-tab i{font-style:normal;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(70,227,198,.18);color:#46E3C6}
+.sc-tab .warn i{background:rgba(255,181,71,.2);color:#FFB547}
+.sc-note{margin:12px 0 0;font-size:11.5px;line-height:1.55;color:var(--muted,#97A3C7)}
+.sc-note a{color:var(--mint,#46E3C6)}
+@media (max-width:560px){.sc-tab>div{grid-template-columns:1fr auto}.sc-tab span{grid-column:1/-1}}
 </style>
 
 <div id="app">
@@ -2360,7 +2371,11 @@ window.JSM = window.JSM || {};
     }
     if (planetId === 'moon') world.craters.push({ x: 120, z: 70, R: 34, depth: 8, rim: 3 }, { x: -110, z: 95, R: 26, depth: 6.5, rim: 2.4 });
     if (planetId === 'mars') world.craters.push({ x: -95, z: -85, R: 30, depth: 6, rim: 2.5 });
+    let world_nearRoad = () => false;
     const lms = LANDMARKS[planetId];
+    const roads = (W.ROADS && W.ROADS[planetId] && !opts.menu) ? W.ROADS[planetId] : [];
+    const segD = (r, x, z) => { const vx = r[2] - r[0], vz = r[3] - r[1]; let k = ((x - r[0]) * vx + (z - r[1]) * vz) / (vx * vx + vz * vz); k = k < 0 ? 0 : k > 1 ? 1 : k; return Math.hypot(x - r[0] - vx * k, z - r[1] - vz * k); };
+    world_nearRoad = (x, z, m) => roads.some(r => segD(r, x, z) < r[4] / 2 + m);
 
     function raw(x, z) {
       const d = Math.sqrt(x * x + z * z);
@@ -2376,6 +2391,7 @@ window.JSM = window.JSM || {};
       }
       let f = U.smooth(44, 66, d);
       for (const l of lms) { const dl = U.dist2(x, z, l.x, l.z); f = Math.min(f, U.smooth(l.flat, l.flat + 9, dl)); }
+      for (const r of roads) { const vx = r[2] - r[0], vz = r[3] - r[1], L2 = vx * vx + vz * vz; let k = ((x - r[0]) * vx + (z - r[1]) * vz) / L2; k = k < 0 ? 0 : k > 1 ? 1 : k; const dr = Math.hypot(x - r[0] - vx * k, z - r[1] - vz * k); if (dr < r[4] + 12) f = Math.min(f, U.smooth(r[4] / 2 + 1.5, r[4] / 2 + 12, dr)); }
       const base = U.fbm(x * 0.03, z * 0.03, 2) * 0.25;
       return h * f + base * (1 - f);
     }
@@ -2527,6 +2543,7 @@ window.JSM = window.JSM || {};
         const x = (rnd() - 0.5) * SIZE * 0.95, z = (rnd() - 0.5) * SIZE * 0.95, d = Math.hypot(x, z);
         if (d < 58 || lms.some(l => U.dist2(x, z, l.x, l.z) < l.flat + 4)) continue;
         if (Math.abs(x - z * 0.15) < 4) continue;
+        if (world_nearRoad(x, z, 3)) continue;
         const h = world.heightAt(x, z), sc = 0.8 + rnd() * 0.9;
         q.identity(); s.set(sc, sc * 2.2, sc); v.set(x, h + sc * 1.1, z); m4.compose(v, q, s); trunks.setMatrixAt(nt++, m4);
         if (rnd() < 0.55) { e.set(0, rnd() * 3, 0); q.setFromEuler(e); s.set(sc * 2, sc * 1.8, sc * 2); v.set(x, h + sc * 3.4, z); m4.compose(v, q, s); crowns.setMatrixAt(nc++, m4); }
@@ -3722,8 +3739,8 @@ window.JSM = window.JSM || {};
   };
   UI.openControls = function () {
     const { body } = UI.openModal('Controles', { size: 'narrow', icon: 'info' });
-    const rows = [['W A S D / flechas', 'Moverse'], ['Mayús', 'Correr'], ['Espacio', 'Saltar'], ['Espacio en el aire', 'Doble salto con propulsores'], ['E', 'Interactuar / hablar'], ['F', 'Escanear recursos'], ['Arrastrar ratón', 'Girar cámara'], ['Rueda', 'Acercar / alejar'], ['C', 'Cámara tercera persona / orbital'],
-      ['B', 'Modo construcción'], ['N', 'Ciencia y datos NASA'], ['R (construcción)', 'Rotar edificio'], ['G (construcción)', 'Cuadrícula'], ['I · M · J', 'Inventario · Mapa · Misiones'], ['Tab', 'Relaciones'], ['1-4', 'Velocidad del tiempo'], ['Esc', 'Pausa / cancelar']];
+    const rows = [['W A S D / flechas o mando', 'Moverse'], ['Mayús o gatillo LT', 'Correr'], ['Espacio o mando B', 'Saltar'], ['Espacio en el aire', 'Doble salto con propulsores'], ['E o mando A', 'Interactuar / hablar'], ['F o mando X', 'Escanear recursos'], ['Arrastrar ratón o palo derecho mando', 'Girar cámara'], ['Rueda', 'Acercar / alejar'], ['C o mando B', 'Cámara tercera persona / orbital'],
+      ['B o mando Y', 'Modo construcción'], ['N', 'Ciencia y datos NASA'], ['R (construcción)', 'Rotar edificio'], ['G (construcción)', 'Cuadrícula'], ['I · M · J', 'Inventario · Mapa · Misiones'], ['Tab', 'Relaciones'], ['1-4', 'Velocidad del tiempo'], ['Esc o mando Start', 'Pausa / cancelar']];
     body.innerHTML = rows.map(r => '<div class="kv"><span>' + r[1] + '</span><span class="kbd">' + r[0] + '</span></div>').join('');
   };
   UI.openOptions = function (fromMenu) {
@@ -4511,7 +4528,7 @@ window.JSM = window.JSM || {};
     addEventListener('gamepadconnected', (e) => {
       Game.gamepads[e.gamepad.index] = e.gamepad;
       Game.gpIndex = e.gamepad.index;
-      try { UI.toast('Mando conectado: ' + (e.gamepad.id || 'Mando'), '', 'gamepad'); } catch (er) { }
+      try { UI.toast && UI.toast('Mando conectado: ' + (e.gamepad.id || 'Mando'), '', 'gamepad'); } catch (er) { }
     });
     addEventListener('gamepaddisconnected', (e) => {
       if (Game.gamepads[e.gamepad.index]) delete Game.gamepads[e.gamepad.index];
@@ -4583,12 +4600,7 @@ window.JSM = window.JSM || {};
       if (rise(0)) { F.press(); }                   // A / cruz: despegar / aterrizar / saltar cuenta
       if (rise(1)) { F.toggleView(); }              // B / círculo: cambiar vista
       if (rise(9)) Game.onEscape();                 // Inicio / Opciones
-    } else if (I.active && I.R) {
-      if (rise(0)) { I.interact(); }                // A / cruz: usar punto de interés
-      if (rise(1)) { if (I.exit) I.exit(); }        // B / círculo: salir
-      if (rise(9)) Game.onEscape();                 // Inicio / Opciones
     } else {
-      if (rise(0) || rise(2)) { }                  // menús: A/X aceptan si hay foco nativo
       if (rise(9)) Game.onEscape();                 // Inicio / Opciones
     }
   };
@@ -4985,13 +4997,6 @@ window.JSM = window.JSM || {};
     const accel = P.onGround ? 14 : 3.5;
     P.vel.x = U.damp(P.vel.x, mx * speedMax, accel, dt);
     P.vel.z = U.damp(P.vel.z, mz * speedMax, accel, dt);
-    // mira con el palo derecho del mando
-    if (!blocked && !JSM.Build.active && (Game.gp.lookX || Game.gp.lookY)) {
-      const s = Game.settings.sens;
-      Game.camYaw -= Game.gp.lookX * 0.014 * s;
-      Game.camPitch = U.clamp(Game.camPitch + Game.gp.lookY * 0.011 * s * (Game.settings.invertY ? -1 : 1), -0.15, Game.camMode === 'orbit' ? 1.45 : 1.2);
-      Game.dragT = 1.2;
-    }
     // salto
     if (blocked || Game.action) Game.jumpQueued = false;
     if (!blocked && (K[' '] || Game.jumpQueued) && P.onGround && !Game.action) {
@@ -4999,6 +5004,12 @@ window.JSM = window.JSM || {};
       P.vel.y = planet.jump * (g.player.inv.boots ? 1.35 : 1); P.onGround = false; JSM.Audio.sfx('jump');
       if (g.planet === 'moon') { g.stats.moonJumps++; if (g.stats.moonJumps === 1) UI.edu('gravity'); }
       K[' '] = false;
+    }
+    if (!blocked && !JSM.Build.active && (Game.gp.lookX || Game.gp.lookY)) {
+      const s = Game.settings.sens;
+      Game.camYaw -= Game.gp.lookX * 0.014 * s;
+      Game.camPitch = U.clamp(Game.camPitch + Game.gp.lookY * 0.011 * s * (Game.settings.invertY ? -1 : 1), -0.15, Game.camMode === 'orbit' ? 1.45 : 1.2);
+      Game.dragT = 1.2;
     }
     P.vel.y -= planet.gravity * dt;
     const nx = P.pos.x + P.vel.x * dt, nz = P.pos.z + P.vel.z * dt;
@@ -5058,7 +5069,7 @@ window.JSM = window.JSM || {};
     // indicador de interacción
     if (!Game.action && !UI.ctxItems && !UI.dialogOpts && !JSM.Build.active) {
       const it = Game.findInteractable();
-      UI.prompt(it ? '<span class="kbd">' + (Game.isTouch ? 'Usar' : Game.gpIndex != null ? 'A' : 'E') + '</span> ' + U.esc(it.label) : null);
+      UI.prompt(it ? '<span class="kbd">' + (Game.isTouch ? 'Usar' : 'E') + '</span> ' + U.esc(it.label) : null);
     } else if (!JSM.Build.active) UI.prompt(null);
     if (!Game.action) UI.actionBar(null);
     if (Game.talking && Game.talking.astro.group.position.distanceTo(P.pos) > 5) Game.endTalk();
@@ -6238,7 +6249,7 @@ window.JSM = window.JSM || {};
   };
   function updateSpace(dt) {
     const S = F.space, s = F.s, t = (F.t += dt), cam = S.cam, K = F.in.keys;
-    // entrada (teclado, joystick táctil y mando)
+    // entrada
     let ix = (K.d || K.arrowright ? 1 : 0) - (K.a || K.arrowleft ? 1 : 0) + F.in.jx + Game.gp.ix;
     let iy = (K.w || K.arrowup ? 1 : 0) - (K.s || K.arrowdown ? 1 : 0) - F.in.jy + Game.gp.iz;
     if (G.settings.invertY) iy = -iy;
@@ -6388,7 +6399,7 @@ window.JSM = window.JSM || {};
   F.beginLanding = function (after) {
     const w = G.world, lm = w && w.landmarks[0];
     G.intro = null;
-    if (!lm || !lm.obj) { if (after) after(); return; }
+    if (!lm || !lm.obj || lm.kind !== 'lander') { if (after) after(); return; }
     const grp = lm.obj.group, baseY = grp.position.y;
     const extras = grp.children.filter(c => c.isGroup || c.position.x < -2.9);
     extras.forEach(c => { c.visible = false; });
@@ -6605,7 +6616,10 @@ window.JSM = window.JSM || {};
     const fm = new THREE.MeshStandardMaterial({ map: floorTex(), color: o.floor || 0xb8c0d0, roughness: 0.55, metalness: 0.1 }); fm.map = floorTex().clone(); fm.map.userData = {}; fm.map.needsUpdate = true; fm.map.repeat.set(Math.round(w / 1.6), Math.round(d / 1.6)); fm.map.wrapS = fm.map.wrapT = THREE.RepeatWrapping; fm.map.encoding = THREE.sRGBEncoding;
     const wm = new THREE.MeshStandardMaterial({ map: wallTex(), color: wallCol, roughness: 0.6, metalness: 0.1 });
     const cm = new THREE.MeshStandardMaterial({ map: wallTex(), color: 0xb4bccc, roughness: 0.8 });
-    const fl = new THREE.Mesh(new THREE.PlaneGeometry(w, d), fm); fl.rotation.x = -Math.PI / 2; R.g.add(fl);
+    const flr = (fw, fd, fx, fz) => { if (fw <= 0.01 || fd <= 0.01) return; const g2 = new THREE.PlaneGeometry(fw, fd); const uv = g2.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, (fx - fw / 2 + uv.getX(i) * fw + w / 2) / w, (fz - fd / 2 + uv.getY(i) * fd + d / 2) / d); const f = new THREE.Mesh(g2, fm); f.rotation.x = -Math.PI / 2; f.position.set(fx, 0, -fz); f.position.z = fz; R.g.add(f); };
+    if (o.hole) { const H = o.hole, x0 = H.x - H.w / 2, x1 = H.x + H.w / 2, z0 = H.z - H.d / 2, z1 = H.z + H.d / 2;
+      flr(w, z0 + d / 2, 0, (-d / 2 + z0) / 2); flr(w, d / 2 - z1, 0, (z1 + d / 2) / 2); flr(x0 + w / 2, H.d, (-w / 2 + x0) / 2, H.z); flr(w / 2 - x1, H.d, (x1 + w / 2) / 2, H.z); }
+    else { const fl = new THREE.Mesh(new THREE.PlaneGeometry(w, d), fm); fl.rotation.x = -Math.PI / 2; R.g.add(fl); }
     const ce = new THREE.Mesh(new THREE.PlaneGeometry(w, d), cm); ce.rotation.x = Math.PI / 2; ce.position.y = h; R.g.add(ce);
     const mw = (pw, x, z, ry) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(pw, h), wm); p.position.set(x, h / 2, z); p.rotation.y = ry; R.g.add(p); };
     mw(w, 0, -d / 2, 0); mw(w, 0, d / 2, Math.PI); mw(d, -w / 2, 0, Math.PI / 2); mw(d, w / 2, 0, -Math.PI / 2);
@@ -6616,7 +6630,7 @@ window.JSM = window.JSM || {};
     // tiras de luz del techo
     const nStrips = Math.max(2, Math.round(d / 3));
     for (let i = 0; i < nStrips; i++) { const z = -d / 2 + (i + 0.5) * d / nStrips; R.box(M.gl(0xfff4dc, 0.9), w * 0.55, 0.05, 0.28, 0, z, h - 0.06); }
-    R.light(-w * 0.22, h - 0.5, -d * 0.18, 0xfff0dc, 0.5, 14); R.light(w * 0.22, h - 0.5, d * 0.18, 0xfff0dc, 0.45, 14);
+    const LD = Math.max(14, h * 2.2 + Math.max(w, d) * 0.5), LK = h > 6 ? 0.9 : 0.5; R.light(-w * 0.22, h - 0.5, -d * 0.18, 0xfff0dc, LK, LD); R.light(w * 0.22, h - 0.5, d * 0.18, 0xfff0dc, LK * 0.9, LD);
     R.amb = new THREE.HemisphereLight(0xdfe8ff, 0x6a5e52, 0.32); R.g.add(R.amb);
     // puerta / esclusa en la pared de entrada (+z)
     const dp = (mat, pw, ph, y, dz) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), mat); p.position.set(0, y, d / 2 - dz); p.rotation.y = Math.PI; R.g.add(p); return p; };
@@ -6888,6 +6902,7 @@ window.JSM = window.JSM || {};
     return C;
   };
 
+  I.ROOMS = ROOMS; I.newRoom = newRoom;
   /* ====================================================================
      ENTRAR / SALIR
      ==================================================================== */
@@ -6918,11 +6933,11 @@ window.JSM = window.JSM || {};
           ring.rotation.x = -Math.PI / 2; ring.position.set(h.x, 0.04, h.z); R.g.add(ring); h.ring = ring;
         });
         sc.add(P.astro.group); P.astro.group.position.set(I.x, 0, I.z); P.astro.group.visible = true;
-        G.camYaw = 0.35; G.camPitch = 0.58; G.camDist = 6.8; G.camMode = 'orbit'; G.camInit = false;
+        G.camYaw = 0.35; G.camPitch = R.h > 6 ? 0.5 : 0.58; G.camDist = clamp(Math.max(R.w, R.d) * 0.62, 5.2, 17); G.camMode = 'orbit'; G.camInit = false;
         setPower(R, !(src.type && (src.broken || src.powered === false)));
         I.houseTimer = 0;
         try { G.renderer.compile(sc, cam); } catch (e) { }
-        UI.toast('Estás dentro de: ' + R.name + '. Acércate a los círculos brillantes y pulsa ' + (G.isTouch ? 'Usar' : G.gpIndex != null ? 'A' : 'E') + '.', '', 'rocket');
+        UI.toast('Estás dentro de: ' + R.name + '. Acércate a los círculos brillantes y pulsa ' + (G.isTouch ? 'Usar' : 'E') + '.', '', 'rocket');
       } catch (e) { JSM.reportError('Interior: ' + e.message, e.stack); I.active = false; }
       setTimeout(() => fade.classList.remove('on'), 120);
     }, 380);
@@ -6977,8 +6992,8 @@ window.JSM = window.JSM || {};
     I.t += dt;
     let ix = 0, iz = 0; const blocked = paused || !!UI.dialogOpts;
     if (!blocked) {
-      if (K['w'] || K['arrowup'] || G.gp.iz > 0) iz += 1; if (K['s'] || K['arrowdown'] || G.gp.iz < 0) iz -= 1;
-      if (K['a'] || K['arrowleft'] || G.gp.ix < 0) ix -= 1; if (K['d'] || K['arrowright'] || G.gp.ix > 0) ix += 1;
+      if (K['w'] || K['arrowup']) iz += 1; if (K['s'] || K['arrowdown']) iz -= 1;
+      if (K['a'] || K['arrowleft']) ix -= 1; if (K['d'] || K['arrowright']) ix += 1;
       if (G.joy) { ix += G.joy.x; iz -= G.joy.y; }
     }
     const moving = Math.hypot(ix, iz) > 0.15;
@@ -6986,17 +7001,11 @@ window.JSM = window.JSM || {};
     if (moving && UI.ctxItems) UI.hideContext();
     if (G.action) G.tickAction(dt, dtMin);
     G.jumpQueued = false;
-    const run = (K['shift'] || G.touchRun || G.gp.run) && moving;
+    const run = (K['shift'] || G.touchRun) && moving;
     const fx = -Math.sin(G.camYaw), fz = -Math.cos(G.camYaw), rx = -fz, rz = fx;
     let mx = fx * iz + rx * ix, mz = fz * iz + rz * ix; const ml = Math.hypot(mx, mz); if (ml > 1) { mx /= ml; mz /= ml; }
     const sp = run ? 5.2 : 3.1;
     P.vel.x = U.damp(P.vel.x, mx * sp, 14, dt); P.vel.z = U.damp(P.vel.z, mz * sp, 14, dt);
-    // mira con el palo derecho del mando (interior)
-    if (!blocked && (G.gp.lookX || G.gp.lookY)) {
-      const s = G.settings.sens;
-      G.camYaw -= G.gp.lookX * 0.014 * s;
-      G.camPitch = Math.min(Math.max(G.camPitch + G.gp.lookY * 0.011 * s * (G.settings.invertY ? -1 : 1), -0.15), 1.3);
-    }
     if (G.action) { P.vel.x = P.vel.z = 0; }
     I.x += P.vel.x * dt; I.z += P.vel.z * dt;
     const m = 0.55; I.x = clamp(I.x, -R.w / 2 + m, R.w / 2 - m); I.z = clamp(I.z, -R.d / 2 + m, R.d / 2 - m);
@@ -7018,7 +7027,7 @@ window.JSM = window.JSM || {};
     let best = null, bd = 1e9;
     R.hot.forEach(h => { const d = U.dist2(I.x, I.z, h.x, h.z); const near = d < h.r; h.ring.material.opacity = near ? 1 : 0.5 + Math.sin(I.t * 3 + h.x) * 0.2; h.ring.scale.setScalar(near ? 1.15 + Math.sin(I.t * 6) * 0.05 : 1); if (near && d < bd) { bd = d; best = h; } });
     I.hot = best; if (best) I.curHot = best;
-    if (!G.action && !UI.ctxItems && !UI.dialogOpts) UI.prompt(best ? '<span class="kbd">' + (G.isTouch ? 'Usar' : G.gpIndex != null ? 'A' : 'E') + '</span> ' + U.esc(best.label) : null); else if (G.action) UI.prompt(null);
+    if (!G.action && !UI.ctxItems && !UI.dialogOpts) UI.prompt(best ? '<span class="kbd">' + (G.isTouch ? 'Usar' : 'E') + '</span> ' + U.esc(best.label) : null); else if (G.action) UI.prompt(null);
     // aire y oxígeno
     const n = g.player.needs, col = Sim.colony(g);
     if (planet.breathable) n.oxygen = Math.min(100, n.oxygen + 20 * dt);
@@ -7035,7 +7044,7 @@ window.JSM = window.JSM || {};
   function updateCam(dt) {
     const P = G.player, cam = I.cam, R = I.R;
     const target = new THREE.Vector3(I.x, G.action && G.action.A && G.action.A.anim === 'sleep' ? 0.6 : 1.3, I.z);
-    const d = clamp(G.camDist, 3.5, 11), p = clamp(G.camPitch, 0.2, 1.3);
+    const d = clamp(G.camDist, 3.5, 22), p = clamp(G.camPitch, 0.2, 1.3);
     const cx = target.x + Math.sin(G.camYaw) * Math.cos(p) * d, cz = target.z + Math.cos(G.camYaw) * Math.cos(p) * d, cy = target.y + Math.sin(p) * d;
     if (!G.camInit) { cam.position.set(cx, cy, cz); G.camInit = true; }
     cam.position.x = U.damp(cam.position.x, cx, 10, dt); cam.position.y = U.damp(cam.position.y, Math.max(0.9, cy), 10, dt); cam.position.z = U.damp(cam.position.z, cz, 10, dt);
@@ -7116,6 +7125,623 @@ window.JSM = window.JSM || {};
       o.m.position.set(x + px, w.heightAt(x, z) + 0.03, z + pz); o.m.rotation.y = yaw; o.m.visible = true; o.age = 0; o.m.material.opacity = 0.42;
       F.last = { x, z };
     }
+  };
+})(window.JSM);
+
+</script>
+<script>
+/* ===================== CENTRO ESPACIAL ORIÓN (Tierra) + base lunar realista =====================
+   Inspirado en el Kennedy Space Center (lanzamiento y ensamblaje) y el Johnson Space Center
+   (control de misiones, entrenamiento, flotabilidad neutral). Modelos simplificados hechos con código:
+   no son réplicas de planos de ingeniería de NASA ni de SpaceX. */
+(function (JSM) {
+  const U = JSM.U, D = JSM.Data, S = JSM.Structures, W = JSM.World, UI = JSM.UI, G = JSM.Game, Sim = JSM.Sim, NA = JSM.NASA;
+  const SC = JSM.SpaceCenter = {};
+
+  /* ---------------- datos: lugares, caminos y actividades ---------------- */
+  D.PLANETS.earth.sub = 'Centro Espacial Orión';
+  // la costa de Florida es plana: colinas suaves y montañas lejanas bajas
+  D.PLANETS.earth.hills = 1.4; D.PLANETS.earth.mtn = 9;
+  // regolito lunar más oscuro y con más contraste (como en las imágenes de referencia)
+  if (D.PLANETS.moon.ground) D.PLANETS.moon.ground = D.PLANETS.moon.ground.map(c => c.map(v => v * 0.72));
+  W.LANDMARKS.earth = [
+    { kind: 'academy', name: 'Academia Espacial Juvenil', x: 0, z: -62, rot: 0, r: 9, flat: 14, actions: ['study', 'mission_review', 'cabin_eat', 'cabin_rest'], discover: 'academy' },
+    { kind: 'mcc', name: 'Centro de control de misiones', x: -60, z: -72, rot: Math.PI, r: 13.5, flat: 18, actions: ['telemetry', 'mission_review'] },
+    { kind: 'training', name: 'Centro de entrenamiento de astronautas', x: 58, z: -72, rot: Math.PI, r: 9, flat: 15, actions: ['gtrain', 'flightsim', 'eva_train', 'cabin_wash'] },
+    { kind: 'vab', name: 'Hangar de ensamblaje', x: -38, z: -138, rot: 0, r: 20, flat: 29, actions: ['engineering', 'inspect_vehicle'] },
+    { kind: 'nbl', name: 'Laboratorio de flotabilidad neutral', x: 60, z: -138, rot: 0, r: 18.5, flat: 25, actions: ['eva_train', 'mission_review'] },
+    { kind: 'launchpad', name: 'Plataforma de lanzamiento', x: -128, z: -112, rot: 0.9, r: 19, flat: 30, terminal: true, actions: ['terminal', 'mission_review', 'inspect_vehicle'] },
+    { kind: 'saturn_ex', name: 'Exposición: Saturn V', x: 116, z: -60, rot: -0.4, r: 8, flat: 12, actions: ['inspect_vehicle', 'engineering'] },
+    { kind: 'starship_ex', name: 'Exposición: Starship', x: 130, z: -20, rot: -1.2, r: 7, flat: 12, actions: ['inspect_vehicle'] },
+    { kind: 'dragon_ex', name: 'Exposición: Crew Dragon', x: 104, z: -32, rot: -1.5, r: 4.6, flat: 9, actions: ['inspect_vehicle'] },
+    { kind: 'orion_ex', name: 'Exposición: nave Orion', x: 104, z: -2, rot: -1.5, r: 5.2, flat: 9, actions: ['inspect_vehicle'] }
+  ];
+  // caminos [x1, z1, x2, z2, ancho]
+  W.ROADS = W.ROADS || {};
+  W.ROADS.earth = [
+    [0, -30, 0, -53, 7], [-20, -40, -20, -96, 7], [20, -40, 20, -96, 7], [-118, -96, 132, -96, 8],
+    [-38, -96, -38, -121, 9], [60, -96, 60, -123, 8], [-60, -96, -60, -84, 6], [58, -96, 58, -82, 6],
+    [-38, -106, -112, -108, 12], [92, -96, 92, 10, 7], [40, -8, 92, -8, 7]
+  ];
+  // la base lunar crece (como en las imágenes de la ESA) y hay un rover junto a la colonia
+  const mb = W.LANDMARKS.moon.find(l => l.kind === 'moonbase'); if (mb) { mb.r = 10; mb.flat = 20; }
+  if (!W.LANDMARKS.moon.some(l => l.kind === 'rover')) W.LANDMARKS.moon.push({ kind: 'rover', name: 'Rover lunar', x: 26, z: -30, rot: 2.4, r: 2.6, flat: 6, actions: ['rover'] });
+
+  Object.assign(D.ACTIONS, {
+    mission_review: { label: 'Revisar una misión', anim: 'work', dur: 18, needs: { fun: 6, energy: -3 }, gain: { research: 3 }, xp: 9, desc: 'Objetivos y estado · +3 investigación' },
+    telemetry: { label: 'Analizar telemetría', anim: 'sit', dur: 24, needs: { fun: 12, energy: -5 }, gain: { research: 4 }, xp: 12, desc: 'Altitud, velocidad, presión · +4 investigación' },
+    inspect_vehicle: { label: 'Inspeccionar la nave', anim: 'work', dur: 18, needs: { fun: 22, energy: -2 }, xp: 8, desc: 'Conoce sus partes y su historia' },
+    engineering: { label: 'Práctica de ingeniería', anim: 'work', dur: 28, needs: { fun: 10, energy: -8 }, gain: { research: 5 }, xp: 13, desc: 'Etapas, piezas y carga · +5 investigación' },
+    eva_train: { label: 'Entrenamiento EVA', anim: 'run', dur: 30, needs: { fun: 20, energy: -20, hygiene: -15 }, xp: 14, stat: 'trainings', desc: 'Caminata espacial practicada · gasta energía' }
+  });
+
+  Object.assign(NA.SOURCES, {
+    ksc: { name: 'NASA Kennedy Space Center', url: 'https://www.nasa.gov/centers-and-facilities/kennedy/' },
+    jsc: { name: 'NASA Johnson Space Center', url: 'https://www.nasa.gov/johnson/' },
+    egs: { name: 'NASA Exploration Ground Systems', url: 'https://www.nasa.gov/centers-and-facilities/kennedy/exploration-ground-systems/' },
+    orion: { name: 'NASA Orion Spacecraft', url: 'https://www.nasa.gov/humans-in-space/orion-spacecraft/' },
+    history: { name: 'NASA History', url: 'https://www.nasa.gov/history/' },
+    dragon: { name: 'SpaceX Dragon', url: 'https://www.spacex.com/vehicles/dragon/' },
+    starship: { name: 'SpaceX Starship', url: 'https://www.spacex.com/vehicles/starship/' }
+  });
+
+  /* ---------------- fichas educativas ---------------- */
+  const NOTE = 'Modelo simplificado hecho con código (no es una réplica de planos reales). Proyecto educativo independiente: no es oficial ni está patrocinado por NASA ni SpaceX.';
+  SC.INFO = {
+    orion_ex: { t: 'Nave Orion', icon: 'rocket', who: 'NASA (con el Módulo de Servicio Europeo de la ESA)', src: 'orion', scale: 'Tamaño real',
+      intro: 'Orion es la nave de la NASA para llevar astronautas más allá de la órbita baja de la Tierra, hasta la Luna.',
+      rows: [['Tripulación', 'Hasta 4 astronautas'], ['Módulo de tripulación', 'Cápsula cónica de unos 5 m de diámetro'], ['Módulo de servicio', 'Europeo (ESA): motor principal, agua, oxígeno y 4 alas solares'], ['Escudo térmico', 'Aguanta unos 2 760 °C al volver a la Tierra'], ['Artemis I', '2022 · voló alrededor de la Luna sin tripulación'], ['Artemis II', 'Abril de 2026 · 4 astronautas alrededor de la Luna en 10 días']],
+      fun: '¡La cápsula cae al mar frenada por paracaídas y la recoge un barco!' },
+    dragon_ex: { t: 'Crew Dragon', icon: 'rocket', who: 'SpaceX', src: 'dragon', scale: 'Tamaño real',
+      intro: 'Crew Dragon es una nave comercial de SpaceX que lleva astronautas a la Estación Espacial Internacional.',
+      rows: [['Primer vuelo con tripulación', 'Mayo de 2020 (misión Demo-2)'], ['Tripulación', 'Normalmente 4 (está diseñada para hasta 7)'], ['Tamaño', 'Unos 4 m de diámetro y 8 m de alto con el «tronco»'], ['Tronco', 'Parte de abajo con paneles solares y aletas; se suelta antes de volver'], ['Seguridad', '8 motores SuperDraco para alejarse del cohete si hay una emergencia'], ['Cabina', 'Se pilota con pantallas táctiles']],
+      fun: 'Dragon se acopla sola a la Estación Espacial: los astronautas solo vigilan.' },
+    starship_ex: { t: 'Starship', icon: 'rocket', who: 'SpaceX', src: 'starship', scale: 'Escala aprox. 1:2',
+      intro: 'Starship es un sistema de transporte espacial muy grande que SpaceX está desarrollando. Aquí ves la nave (la parte de arriba).',
+      rows: [['La nave', 'Unos 50 m de alto y 9 m de diámetro, de acero inoxidable'], ['Con el propulsor Super Heavy', 'Más de 120 m: el cohete más grande y potente que ha volado'], ['Escudo', 'Losetas negras hexagonales en un lado'], ['Ya demostrado', 'Vuelos de prueba desde 2023; el propulsor fue atrapado por la torre (2024); la nave ha vuelto de la órbita y caído en el mar de forma controlada'], ['Todavía en desarrollo', 'Recargar combustible en el espacio, llevar personas y la versión que la NASA eligió para alunizar en Artemis']],
+      fun: 'La idea es que sea reutilizable, como un avión: despegar, aterrizar y volver a volar.' },
+    saturn_ex: { t: 'Saturn V', icon: 'rocket', who: 'NASA · programa Apolo', src: 'history', scale: 'Escala aprox. 1:2',
+      intro: 'El Saturn V fue el cohete que llevó astronautas a la Luna en las misiones Apolo.',
+      rows: [['Altura', '110,6 m (más que un edificio de 30 pisos)'], ['Diámetro', '10,1 m'], ['Etapas', '3 · la primera tenía 5 motores F-1'], ['Lanzamientos', '13, entre 1967 y 1973'], ['Apolo 11', '16 de julio de 1969 · primera llegada de personas a la Luna'], ['Viajeros', 'Llevó a 24 personas hacia la Luna']],
+      fun: 'Las franjas negras y blancas ayudaban a ver con cámaras si el cohete giraba.' },
+    launchpad: { t: 'Cohete SLS en la plataforma', icon: 'rocket', who: 'NASA', src: 'egs', scale: 'Escala aprox. 1:2',
+      intro: 'El SLS (Space Launch System) es el cohete que lanza la nave Orion en las misiones Artemis, desde una plataforma como esta.',
+      rows: [['Altura', 'Unos 98 m'], ['Motores', '4 motores RS-25 y 2 propulsores sólidos a los lados'], ['Torre', 'La torre del lanzador móvil lleva brazos con cables, combustible y la pasarela de los astronautas'], ['Pararrayos', 'Torres altas con cables que protegen al cohete de los rayos'], ['Misiones', 'Artemis I (2022) y Artemis II (2026)']],
+      fun: 'Antes del despegue se echa muchísima agua bajo el cohete para bajar el ruido y el calor.' },
+    vab: { t: 'Hangar de ensamblaje', icon: 'tool', who: 'Inspirado en el Vehicle Assembly Building (Kennedy)', src: 'ksc', scale: 'Más pequeño que el real',
+      intro: 'Aquí se juntan las piezas de un cohete, una encima de otra, antes de llevarlo a la plataforma.',
+      rows: [['El edificio real', '160 m de alto, 218 m de largo y 158 m de ancho'], ['Sus puertas', 'Unos 139 m de alto: las más altas del mundo'], ['Construido', 'En 1966, para el cohete Saturn V'], ['Hoy', 'Allí se arma el cohete SLS de las misiones Artemis']],
+      fun: 'Es tan grande que en los días húmedos se pueden formar nubes dentro.' },
+    mcc: { t: 'Centro de control de misiones', icon: 'map', who: 'Inspirado en el Mission Control Center (Johnson, Houston)', src: 'jsc',
+      intro: 'Desde una sala así, un equipo vigila la nave día y noche y ayuda a los astronautas.',
+      rows: [['¿Qué miran?', 'Telemetría: altitud, velocidad, presión, temperatura y estado de los sistemas'], ['Desde', '1965 dirige vuelos tripulados desde Houston'], ['Apolo 11', '«Houston, aquí base Tranquilidad. El Eagle ha alunizado.»'], ['Hoy', 'Vigila la Estación Espacial Internacional las 24 horas']],
+      fun: 'Cada consola tiene un trabajo: energía, comunicaciones, trayectoria, salud de la tripulación…' },
+    nbl: { t: 'Laboratorio de flotabilidad neutral', icon: 'water', who: 'Inspirado en el Neutral Buoyancy Laboratory (Johnson)', src: 'jsc', scale: 'Representación simplificada',
+      intro: 'Una piscina gigante donde los astronautas practican caminatas espaciales con el traje puesto.',
+      rows: [['La piscina real', 'Unos 62 m de largo, 31 m de ancho y 12 m de profundidad'], ['Agua', 'Unos 23,5 millones de litros'], ['Dentro', 'Maquetas de módulos de la Estación Espacial'], ['¿Por qué agua?', 'Con pesos y flotadores, el astronauta ni se hunde ni sube: se parece a flotar en el espacio']],
+      fun: 'Por cada hora de caminata espacial, los astronautas practican unas 7 horas en el agua.' },
+    training: { t: 'Centro de entrenamiento de astronautas', icon: 'star', who: 'Inspirado en el entrenamiento del Johnson Space Center', src: 'jsc',
+      intro: 'Antes de volar, los astronautas practican con centrífugas, simuladores y trajes EVA.',
+      rows: [['Centrífuga', 'Gira muy rápido para sentir las fuerzas «G» de un despegue'], ['Simulador', 'Practica pilotaje y aterrizajes sin peligro'], ['EVA', 'Extra-Vehicular Activity: actividad fuera de la nave']],
+      fun: '' },
+    academy: { t: 'Academia Espacial Juvenil', icon: 'research', who: 'Instalación propia de Junior Mission Orión', src: 'history',
+      intro: 'Aquí se conecta todo: ingeniería, programación, electrónica, robótica, física, astronomía, telecomunicaciones, biología espacial y soporte vital.',
+      rows: [['Clases', '+5 investigación y +12 de experiencia'], ['CanSat Selene', 'Sus sensores de altitud, presión y velocidad se parecen a la telemetría del control de misiones']],
+      fun: '' }
+  };
+  function infoHTML(k) {
+    const I = SC.INFO[k]; if (!I) return '';
+    const src = NA.SOURCES[I.src];
+    return '<p style="font-size:15px;line-height:1.5;margin:0 0 12px">' + U.esc(I.intro) + '</p>' +
+      '<div class="sc-tab">' + I.rows.map(r => '<div><span>' + U.esc(r[0]) + '</span><b>' + U.esc(r[1]) + '</b></div>').join('') + '</div>' +
+      (I.fun ? '<div class="edu" style="margin-top:12px"><b>Dato curioso</b>' + U.esc(I.fun) + '</div>' : '') +
+      '<p class="sc-note">' + U.esc(I.who) + (I.scale ? ' · ' + U.esc(I.scale) : '') + '<br>Fuente: <a href="' + src.url + '" target="_blank" rel="noopener">' + U.esc(src.name) + '</a><br>' + U.esc(NOTE) + '</p>';
+  }
+  SC.openInfo = function (k) {
+    const I = SC.INFO[k]; if (!I) return;
+    const { body } = UI.openModal(I.t, { icon: I.icon || 'info' });
+    body.innerHTML = infoHTML(k);
+  };
+  SC.openTelemetry = function () {
+    const r = (a, b, d) => (a + Math.random() * (b - a)).toFixed(d || 0);
+    const { body } = UI.openModal('Análisis de telemetría', { icon: 'research' });
+    body.innerHTML = '<p style="margin:0 0 10px;line-height:1.5">La <b>telemetría</b> son datos que una nave mide y envía por radio para saber cómo está. Tú revisaste estos:</p>' +
+      '<div class="sc-tab tele">' +
+      [['Altitud', r(405, 420) + ' km', 'ok'], ['Velocidad', r(27500, 27650) + ' km/h', 'ok'], ['Presión de cabina', r(100.8, 101.6, 1) + ' kPa', 'ok'], ['Temperatura', r(21, 24, 1) + ' °C', 'ok'], ['Batería', r(86, 99) + ' %', 'ok'], ['Señal de radio', r(-92, -70) + ' dBm', Math.random() < 0.35 ? 'warn' : 'ok'], ['Oxígeno en cabina', r(20.6, 21.2, 1) + ' %', 'ok']]
+        .map(x => '<div class="' + x[2] + '"><span>' + x[0] + '</span><b>' + x[1] + '</b><i>' + (x[2] === 'ok' ? 'Normal' : 'Revisar') + '</i></div>').join('') + '</div>' +
+      '<div class="edu" style="margin-top:12px"><b>Igual que un CanSat</b>Un CanSat como el proyecto <span style="font-weight:700;color:var(--ink)">CanSat Selene</span> mide la presión del aire para calcular su altitud, y manda sus datos por radio a una estación en tierra: ¡es telemetría!</div>' +
+      '<p class="sc-note">Valores de ejemplo, parecidos a los de una nave en órbita baja como la Estación Espacial.</p>';
+  };
+  SC.openEngineering = function () {
+    const { body } = UI.openModal('Práctica de ingeniería', { icon: 'tool' });
+    body.innerHTML = '<div class="grid c2">' +
+      '<div class="card"><span class="label">Etapas</span><h3>Soltar peso</h3><p>Un cohete se divide en etapas. Cuando una se queda sin combustible, se suelta para no cargar peso inútil. El Saturn V tenía 3.</p></div>' +
+      '<div class="card"><span class="label">Combustible</span><h3>Casi todo es tanque</h3><p>La mayor parte de un cohete es combustible y oxidante. La nave con los astronautas es una parte pequeña de arriba.</p></div>' +
+      '<div class="card"><span class="label">Carga útil</span><h3>Lo que importa</h3><p>Es lo que el cohete lleva: una nave, un satélite o un rover.</p></div>' +
+      '<div class="card"><span class="label">Escape</span><h3>Torre de emergencia</h3><p>Arriba hay un pequeño cohete que aleja la cápsula si algo sale mal.</p></div></div>' +
+      '<p class="sc-note">Práctica completada: +5 investigación y +13 de experiencia.</p>';
+  };
+  SC.openEVA = function () {
+    const { body } = UI.openModal('Entrenamiento EVA', { icon: 'water' });
+    body.innerHTML = '<p style="line-height:1.5;margin:0 0 10px"><b>EVA</b> significa <i>Extra-Vehicular Activity</i>: actividad fuera de la nave, o caminata espacial.</p>' +
+      '<div class="edu"><b>¿Por qué practicar en el agua?</b>Con el traje lleno de aire y unos pesos, el astronauta ni flota hacia arriba ni se hunde. Así practica moverse despacio, usar herramientas y sujetarse siempre con una cuerda.</div>' +
+      '<p class="sc-note">Es una representación simplificada, no una simulación física de la flotación. Fuente: <a href="' + NA.SOURCES.jsc.url + '" target="_blank" rel="noopener">' + U.esc(NA.SOURCES.jsc.name) + '</a></p>';
+  };
+
+  const prevComplete = G.completeAction;
+  G.completeAction = function (a) {
+    const id = a.id, src = a.src;
+    prevComplete.call(G, a);
+    setTimeout(() => {
+      if (UI.modalOpen) return;
+      if (id === 'inspect_vehicle' && src) SC.openInfo(src.kind === 'vab' ? 'launchpad' : src.kind);
+      else if (id === 'telemetry') SC.openTelemetry();
+      else if (id === 'engineering') SC.openEngineering();
+      else if (id === 'eva_train') SC.openEVA();
+      else if (id === 'mission_review') UI.openMissions();
+    }, 350);
+  };
+  // "Conocer este lugar" en el menú de cada instalación del Centro Espacial
+  const prevShow = UI.showContext;
+  UI.showContext = function (title, sub, items, onClose) {
+    const it = G.mode === 'play' && !(JSM.Interior && JSM.Interior.active) ? G.findInteractable() : null;
+    if (it && it.type === 'landmark' && SC.INFO[it.ref.kind] && Sim.g && Sim.g.planet === 'earth' && items.length && !items.some(i => i.label === 'Conocer este lugar'))
+      items.push({ label: 'Conocer este lugar', sub: 'Ficha con datos reales', eff: '', fn: () => SC.openInfo(it.ref.kind) });
+    return prevShow.call(UI, title, sub, items, onClose);
+  };
+
+  /* ---------------- materiales y texturas ---------------- */
+  const TX = {};
+  function ctex(k, w, h, draw, rx, ry) {
+    if (TX[k]) return TX[k];
+    const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
+    if (rx || ry) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx || 1, ry || 1); }
+    t.userData = { shared: true }; return TX[k] = t;
+  }
+  const noise = (g, w, h, n, a) => { for (let i = 0; i < n; i++) { g.fillStyle = 'rgba(0,0,0,' + Math.random() * a + ')'; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); } };
+  const T = {
+    panel: () => ctex('vabpanel', 256, 256, (g, w, h) => { g.fillStyle = '#d9dde3'; g.fillRect(0, 0, w, h); noise(g, w, h, 1500, 0.05); g.strokeStyle = 'rgba(60,70,85,.28)'; for (let x = 0; x <= w; x += 32) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); } g.strokeStyle = 'rgba(60,70,85,.16)'; for (let y = 0; y <= h; y += 64) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); } g.fillStyle = 'rgba(40,60,90,.55)'; for (let x = 8; x < w; x += 64) g.fillRect(x, 20, 10, h - 40); }, 4, 3),
+    door: () => ctex('vabdoor', 128, 512, (g, w, h) => { g.fillStyle = '#c7ccd4'; g.fillRect(0, 0, w, h); noise(g, w, h, 800, 0.05); g.strokeStyle = 'rgba(40,50,70,.45)'; g.lineWidth = 3; for (let y = 0; y <= h; y += 24) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); } g.lineWidth = 2; g.beginPath(); g.moveTo(w / 2, 0); g.lineTo(w / 2, h); g.stroke(); }),
+    flag: () => ctex('flag', 380, 200, (g, w, h) => { for (let i = 0; i < 13; i++) { g.fillStyle = i % 2 ? '#f4f4f4' : '#b22234'; g.fillRect(0, i * h / 13, w, h / 13 + 1); } g.fillStyle = '#3c3b6e'; g.fillRect(0, 0, w * 0.4, h * 7 / 13); g.fillStyle = '#fff'; for (let r = 0; r < 9; r++) for (let c = 0; c < (r % 2 ? 5 : 6); c++) { g.beginPath(); g.arc(12 + c * 25 + (r % 2 ? 12 : 0), 9 + r * 11.5, 2.6, 0, 7); g.fill(); } }),
+    mural: () => ctex('mural', 256, 256, (g, w, h) => { g.fillStyle = '#0d1a3a'; g.beginPath(); g.arc(128, 128, 124, 0, 7); g.fill(); g.strokeStyle = '#FFB547'; g.lineWidth = 8; g.stroke(); g.fillStyle = '#46E3C6'; g.beginPath(); g.ellipse(128, 128, 90, 34, -0.5, 0, 7); g.strokeStyle = '#46E3C6'; g.lineWidth = 6; g.stroke(); g.fillStyle = '#fff'; g.font = '700 30px "Chakra Petch",sans-serif'; g.textAlign = 'center'; g.fillText('ORIÓN', 128, 138); g.font = '600 14px sans-serif'; g.fillText('CENTRO ESPACIAL', 128, 60); }),
+    saturn: () => ctex('saturn', 256, 512, (g, w, h) => { g.fillStyle = '#f2f2ef'; g.fillRect(0, 0, w, h); noise(g, w, h, 900, 0.03); g.fillStyle = '#16171a'; for (let i = 0; i < 4; i++) { g.fillRect(i * 64, h * 0.62, 32, h * 0.38); g.fillRect(i * 64 + 32, h * 0.06, 32, h * 0.12); } g.fillRect(0, h * 0.58, w, 8); g.fillStyle = '#b22234'; g.font = '700 26px sans-serif'; g.save(); g.translate(150, h * 0.22); g.rotate(Math.PI / 2); g.fillText('UNITED STATES', 0, 0); g.restore(); }),
+    starship: () => ctex('starship', 512, 256, (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#9aa1aa'); gr.addColorStop(0.25, '#e6e9ee'); gr.addColorStop(0.5, '#b6bcc5'); gr.addColorStop(1, '#9aa1aa'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(0,0,0,.12)'; for (let y = 0; y < h; y += 18) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); } g.fillStyle = '#18191c'; g.fillRect(w * 0.5, 0, w * 0.5, h); g.strokeStyle = 'rgba(255,255,255,.1)'; for (let y = 0; y < h; y += 7) for (let x = w * 0.5 + (y / 7 % 2) * 4; x < w; x += 8) g.strokeRect(x, y, 7, 6); }),
+    tiles: () => ctex('tiles', 128, 128, (g, w, h) => { g.fillStyle = '#18191c'; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(255,255,255,.12)'; for (let y = 0; y < h; y += 8) for (let x = (y / 8 % 2) * 4; x < w; x += 8) g.strokeRect(x, y, 7, 7); }, 4, 4),
+    solar: () => ctex('dragonsolar', 512, 128, (g, w, h) => { g.fillStyle = '#eef0f4'; g.fillRect(0, 0, w, h); g.fillStyle = '#1b2d5c'; g.fillRect(0, 0, w * 0.5, h); g.strokeStyle = 'rgba(120,160,230,.45)'; for (let x = 0; x < w * 0.5; x += 12) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); } for (let y = 0; y < h; y += 12) { g.beginPath(); g.moveTo(0, y); g.lineTo(w * 0.5, y); g.stroke(); } }),
+    cells: () => ctex('cells', 128, 128, (g, w, h) => { g.fillStyle = '#20366e'; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(150,190,255,.5)'; for (let i = 0; i <= w; i += 16) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, h); g.stroke(); g.beginPath(); g.moveTo(0, i); g.lineTo(w, i); g.stroke(); } }, 3, 1),
+    foam: () => ctex('foam', 256, 256, (g, w, h) => { g.fillStyle = '#d27a36'; g.fillRect(0, 0, w, h); for (let i = 0; i < 2500; i++) { g.fillStyle = 'rgba(' + (Math.random() < 0.5 ? '120,60,20' : '255,190,120') + ',' + Math.random() * 0.12 + ')'; g.fillRect(Math.random() * w, Math.random() * h, 3, 3); } g.strokeStyle = 'rgba(90,40,10,.22)'; for (let y = 0; y < h; y += 40) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); } }, 2, 3),
+    concrete: () => ctex('sc-conc', 256, 256, (g, w, h) => { g.fillStyle = '#b4b6b8'; g.fillRect(0, 0, w, h); noise(g, w, h, 4000, 0.07); g.strokeStyle = 'rgba(0,0,0,.12)'; for (let i = 0; i <= w; i += 64) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, h); g.stroke(); g.beginPath(); g.moveTo(0, i); g.lineTo(w, i); g.stroke(); } }, 6, 6),
+    road: () => ctex('road', 64, 256, (g, w, h) => { g.fillStyle = '#3d4046'; g.fillRect(0, 0, w, h); noise(g, w, h, 900, 0.18); g.fillStyle = '#e8e2c8'; g.fillRect(2, 0, 2, h); g.fillRect(w - 4, 0, 2, h); g.fillStyle = '#FFB547'; g.fillRect(w / 2 - 1.5, 0, 3, h * 0.45); }),
+    gravel: () => ctex('gravel', 128, 128, (g, w, h) => { g.fillStyle = '#9b958a'; g.fillRect(0, 0, w, h); for (let i = 0; i < 1600; i++) { g.fillStyle = 'rgba(' + (Math.random() < 0.5 ? '60,55,50' : '220,215,200') + ',' + Math.random() * 0.35 + ')'; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); } })
+  };
+  function sign(text, sub, accent) {
+    return ctex('sign-' + text, 512, 128, (g, w, h) => { g.fillStyle = '#121a30'; g.fillRect(0, 0, w, h); g.fillStyle = accent || '#46E3C6'; g.fillRect(0, h - 10, w, 10); g.fillRect(0, 0, 12, h - 10); g.fillStyle = '#fff'; g.font = '700 ' + (text.length > 24 ? 30 : 38) + 'px "Chakra Petch",sans-serif'; g.fillText(text, 34, 58); g.fillStyle = '#9fb0d6'; g.font = '500 22px sans-serif'; g.fillText(sub || 'Centro Espacial Orión', 34, 96); });
+  }
+  function mats() {
+    const m = (c, r, me, o) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: r === undefined ? 0.6 : r, metalness: me || 0 }, o || {}));
+    return {
+      m, white: m(0xeef0f3, 0.5), off: m(0xd9dce1, 0.6), grey: m(0x8d939c, 0.5, 0.3), dark: m(0x2c313b, 0.55, 0.4), black: m(0x15171b, 0.6, 0.2),
+      steel: m(0xb9c0c9, 0.35, 0.55), orange: m(0xffffff, 0.75, 0, { map: T.foam() }), red: m(0xb23a2f, 0.5, 0.2), amber: m(0xffb547, 0.4, 0.2, { emissive: 0xffb547, emissiveIntensity: 0.6 }),
+      glassB: m(0x2a4c74, 0.12, 0.6, { emissive: 0x0e2340, emissiveIntensity: 0.4 }), glassG: m(0x9fd8ff, 0.08, 0.2, { transparent: true, opacity: 0.35, depthWrite: false }),
+      conc: m(0xffffff, 0.95, 0, { map: T.concrete() }), panel: m(0xffffff, 0.65, 0.1, { map: T.panel() }), cells: m(0xffffff, 0.3, 0.4, { map: T.cells() }), redL: m(0xff3a3a, 0.4, 0, { emissive: 0xff2020, emissiveIntensity: 1.2 }),
+      water: m(0x2c87c6, 0.1, 0.1, { transparent: true, opacity: 0.6 })
+    };
+  }
+  /* constructores simples */
+  const mk = (g, geo, mat, x, y, z, cast) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); if (cast !== false) o.castShadow = true; o.receiveShadow = true; g.add(o); return o; };
+  const bx = (g, mat, w, h, d, x, y0, z, ry) => { const o = mk(g, new THREE.BoxGeometry(w, h, d), mat, x, y0 + h / 2, z); if (ry) o.rotation.y = ry; return o; };
+  const cy = (g, mat, rt, rb, h, x, y0, z, seg, open) => mk(g, new THREE.CylinderGeometry(rt, rb, h, seg || 28, 1, !!open), mat, x, y0 + h / 2, z);
+  const sp = (g, mat, r, x, y, z) => mk(g, new THREE.SphereGeometry(r, 20, 14), mat, x, y, z);
+  const bell = (g, mat, r, h, x, y, z) => { const o = mk(g, new THREE.CylinderGeometry(r * 0.35, r, h, 18, 1, true), mat, x, y - h / 2, z); o.material.side = THREE.DoubleSide; return o; };
+  const lathe = (pts, seg) => new THREE.LatheGeometry(pts.map(p => new THREE.Vector2(p[0], p[1])), seg || 32);
+  function signPost(g, M, text, sub, x, z, ry, accent) {
+    const s = new THREE.Group(); s.position.set(x, 0, z); s.rotation.y = ry || 0; g.add(s);
+    bx(s, M.dark, 5.4, 0.5, 0.6, 0, 0, 0); const p = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 1.3), new THREE.MeshStandardMaterial({ map: sign(text, sub, accent), roughness: 0.5, emissive: 0xffffff, emissiveMap: sign(text, sub, accent), emissiveIntensity: 0.25 }));
+    p.position.set(0, 1.25, 0.31); s.add(p); bx(s, M.dark, 5.4, 1.5, 0.5, 0, 0.5, 0); return s;
+  }
+  function kiosk(g, M, x, z, ry) { const k = new THREE.Group(); k.position.set(x, 0, z); k.rotation.y = ry || 0; g.add(k); bx(k, M.dark, 0.9, 1.25, 0.55, 0, 0, 0); const s = bx(k, M.m(0x0a1830, 0.3, 0, { emissive: 0x2a8fd0, emissiveIntensity: 0.9 }), 0.75, 0.48, 0.05, 0, 1.0, 0.25); s.rotation.x = -0.35; bx(k, M.amber, 0.92, 0.05, 0.57, 0, 1.25, 0); return k; }
+  function lattice(g, mat, w, h, x, z, step) {
+    const t = new THREE.Group(); t.position.set(x, 0, z); g.add(t);
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => bx(t, mat, 0.45, h, 0.45, a * w / 2, 0, b * w / 2));
+    const bar = new THREE.BoxGeometry(w, 0.22, 0.22), barz = new THREE.BoxGeometry(0.22, 0.22, w), dg = new THREE.BoxGeometry(0.16, Math.hypot(w, step), 0.16);
+    for (let y = step; y < h; y += step) {
+      [-1, 1].forEach(s => { mk(t, bar, mat, 0, y, s * w / 2, false); mk(t, barz, mat, s * w / 2, y, 0, false); });
+      const a = Math.atan2(w, step);
+      [-1, 1].forEach(s => { const d1 = mk(t, dg, mat, 0, y - step / 2, s * w / 2, false); d1.rotation.z = s * a; const d2 = mk(t, dg, mat, s * w / 2, y - step / 2, 0, false); d2.rotation.x = s * a; });
+    }
+    return t;
+  }
+
+  /* ---------------- modelos ---------------- */
+  const BUILD = {};
+  BUILD.launchpad = function (g, P) {
+    const M = mats();
+    cy(g, M.conc, 26, 26, 0.5, 0, 0, 0, 8); cy(g, M.conc, 15, 19, 3.2, 0, 0.5, 0, 8);
+    bx(g, M.black, 7, 0.1, 40, 0, 3.66, 4); bx(g, M.dark, 7.6, 2.2, 7, 0, 0.5, 22); // zanja de llamas
+    // lanzador móvil
+    bx(g, M.grey, 28, 5, 24, 0, 3.7, 0); bx(g, M.dark, 8, 0.2, 8, 3, 8.7, 0);
+    for (const [x, z] of [[-11, -9], [11, -9], [-11, 9], [11, 9], [-11, 0], [11, 0]]) bx(g, M.dark, 2, 2.4, 2, x, 1.3, z);
+    // cohete SLS (escala aprox. 1:2), centrado en x=3
+    const R = new THREE.Group(); R.position.set(3, 8.9, 0); g.add(R);
+    const core = cy(R, M.orange, 2.5, 2.5, 38, 0, 2.6, 0, 32); core.material.map.repeat.set(2, 3);
+    cy(R, M.dark, 2.55, 2.55, 2.6, 0, 0, 0, 32);
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => bell(R, M.dark, 0.9, 2.2, a * 1.1, 0.2, b * 1.1));
+    [-1, 1].forEach(s => { cy(R, M.white, 1.12, 1.12, 31, s * 3.75, 1.6, 0, 24); cy(R, M.white, 0.1, 1.12, 3.6, s * 3.75, 32.6, 0, 24); [4, 12, 20, 28].forEach(y => cy(R, M.dark, 1.15, 1.15, 0.35, s * 3.75, y, 0, 24)); bell(R, M.dark, 1.2, 2.0, s * 3.75, 1.6, 0); });
+    cy(R, M.off, 1.7, 2.5, 4.2, 0, 40.6, 0, 32);
+    cy(R, M.white, 1.7, 1.7, 3.0, 0, 44.8, 0, 32);
+    cy(R, M.white, 2.5, 1.7, 1.2, 0, 47.8, 0, 32);
+    cy(R, M.white, 2.5, 2.5, 3.0, 0, 49, 0, 32);
+    mk(R, lathe([[2.55, 0], [2.4, 1.2], [1.6, 3.2], [0.7, 5], [0.45, 5.6]]), M.white, 0, 52, 0);
+    cy(R, M.white, 0.2, 0.45, 2.2, 0, 57.6, 0, 16); cy(R, M.steel, 0.06, 0.12, 2.2, 0, 59.8, 0, 8);
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; bell(R, M.dark, 0.35, 0.6, Math.cos(a) * 0.45, 58.4, Math.sin(a) * 0.45); }
+    P.rocket = R;
+    // torre del lanzador móvil
+    const tw = lattice(g, M.grey, 6, 70, -7.5, 0, 4); tw.position.y = 8.7;
+    for (let i = 0; i < 6; i++) { const y = 8.7 + 8 + i * 8.5; bx(g, M.grey, 6.2, 0.3, 6.2, -7.5, y, 0); }
+    [[16, 4.5], [26, 4], [37, 4], [47, 4]].forEach(([y, l]) => bx(g, M.grey, l, 0.5, 0.9, -4.5 + l / 2 - 1, 8.7 + y, 0));
+    const arm = bx(g, M.off, 5.6, 2.4, 2.2, -2.5, 8.7 + 51, 0); bx(g, M.amber, 0.08, 2.0, 2.0, 0.3, 8.7 + 51.2, 0);
+    P.beacon = sp(g, M.redL, 0.5, -7.5, 8.7 + 72, 0);
+    // pararrayos con cables
+    const tops = [];
+    for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + 0.5, x = Math.cos(a) * 24, z = Math.sin(a) * 24; cy(g, M.steel, 0.35, 0.8, 74, x, 0, z, 8); cy(g, M.steel, 0.08, 0.08, 6, x, 74, z, 6); tops.push(new THREE.Vector3(x, 79, z)); sp(g, M.redL, 0.35, x, 79.3, z); }
+    const lp = []; tops.forEach((t, i) => { const n = tops[(i + 1) % 3]; for (let k = 0; k < 12; k++) { const a = k / 12, b = (k + 1) / 12, sag = v => 10 * Math.sin(Math.PI * v); lp.push(t.x + (n.x - t.x) * a, t.y - sag(a), t.z + (n.z - t.z) * a, t.x + (n.x - t.x) * b, t.y - sag(b), t.z + (n.z - t.z) * b); } lp.push(t.x, t.y, t.z, t.x * 1.6, 0, t.z * 1.6); });
+    const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3)); g.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x6a7280 })));
+    // tanque de agua
+    const wt = new THREE.Group(); wt.position.set(22, 0, -22); g.add(wt);
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; const l = cy(wt, M.steel, 0.3, 0.3, 26, Math.cos(a) * 3, 0, Math.sin(a) * 3, 8); }
+    sp(wt, M.white, 4.2, 0, 29, 0); cy(wt, M.steel, 0.6, 0.6, 26, 0, 0, 0, 10);
+    kiosk(g, M, 6, 23.5, 0); signPost(g, M, 'PLATAFORMA DE LANZAMIENTO', 'Cohete SLS · misiones Artemis', -6, 24, 0, '#FF5D73');
+  };
+  BUILD.vab = function (g, P) {
+    const M = mats();
+    bx(g, M.conc, 44, 0.4, 36, 0, 0, 0);
+    const hb = bx(g, M.panel, 32, 46, 26, 0, 0.4, 0); hb.material.map.repeat.set(5, 7);
+    bx(g, M.off, 32.6, 1.2, 26.6, 0, 46.4, 0); bx(g, M.grey, 6, 2.5, 4, -6, 47.6, -3); bx(g, M.grey, 4, 2, 3, 8, 47.6, 4);
+    const lb = bx(g, M.panel, 13, 22, 22, -22.5, 0.4, 2); lb.material = M.panel.clone(); lb.material.map = T.panel(); bx(g, M.off, 13.4, 0.8, 22.4, -22.5, 22.4, 2);
+    // gran puerta frontal
+    const dm = new THREE.MeshStandardMaterial({ map: T.door(), roughness: 0.7, metalness: 0.2 });
+    bx(g, M.dark, 12.4, 42, 0.6, 2, 0.4, 13.05); mk(g, new THREE.PlaneGeometry(11.4, 41.2), dm, 2, 21.2, 13.4, false);
+    [-4.6, 8.6].forEach(x => bx(g, M.grey, 1.0, 44, 1.0, x, 0.4, 13.2));
+    // bandera y mural
+    const fl = new THREE.Mesh(new THREE.PlaneGeometry(10.5, 5.5), new THREE.MeshStandardMaterial({ map: T.flag(), roughness: 0.7 })); fl.position.set(-10, 34, 13.02); g.add(fl);
+    const mu = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), new THREE.MeshStandardMaterial({ map: T.mural(), roughness: 0.6, transparent: true })); mu.position.set(11.5, 34, 13.02); g.add(mu);
+    // ventanales industriales laterales
+    [-1, 1].forEach(s => { for (let i = 0; i < 6; i++) bx(g, M.glassB, 0.1, 30, 1.6, s * 16.05, 6, -10 + i * 4); });
+    P.beacon = sp(g, M.redL, 0.45, 0, 47.6, 0);
+    signPost(g, M, 'HANGAR DE ENSAMBLAJE', 'Aquí se arman los cohetes', -8, 17.5, 0, '#FFB547');
+  };
+  BUILD.mcc = function (g, P) {
+    const M = mats();
+    bx(g, M.conc, 32, 0.4, 24, 0, 0, 0);
+    bx(g, M.off, 26, 10, 17, 0, 0.4, -1);
+    [2.4, 6.6].forEach(y => bx(g, M.glassB, 26.2, 2.2, 17.2, 0, y, -1));
+    bx(g, M.dark, 26.6, 0.6, 17.6, 0, 10.4, -1);
+    bx(g, M.glassB, 6, 3.4, 0.4, 0, 0.4, 7.6); bx(g, M.white, 8, 0.4, 4, 0, 3.8, 9); [-3.6, 3.6].forEach(x => cy(g, M.steel, 0.15, 0.15, 3.4, x, 0.4, 10.6, 8));
+    // antenas en el techo
+    const dish = (x, z, r) => { cy(g, M.steel, 0.15, 0.2, 2, x, 11, z, 8); const d = mk(g, new THREE.SphereGeometry(r, 24, 10, 0, Math.PI * 2, 0, 1.0), M.white, x, 13 + r * 0.6, z); d.rotation.x = Math.PI + 0.7; d.material = M.white.clone(); d.material.side = THREE.DoubleSide; };
+    dish(-7, -4, 2.2); dish(6, -6, 1.6); cy(g, M.steel, 0.06, 0.06, 7, 9, 11, 3, 6);
+    P.beacon = sp(g, M.redL, 0.25, 9, 18.1, 3);
+    signPost(g, M, 'CONTROL DE MISIONES', 'Telemetría · revisión de misiones', 7, 11, 0, '#6FB6FF');
+  };
+  BUILD.nbl = function (g, P) {
+    const M = mats();
+    bx(g, M.conc, 40, 0.4, 30, 0, 0, 0);
+    bx(g, M.off, 34, 9, 24, 0, 0.4, -1);
+    const roof = mk(g, new THREE.CylinderGeometry(12.5, 12.5, 34.4, 32, 1, false, 0, Math.PI), M.white, 0, 9.4, -1); roof.rotation.z = Math.PI / 2; roof.rotation.y = Math.PI / 2; roof.scale.set(1, 1, 0.35);
+    roof.rotation.set(0, 0, Math.PI / 2); roof.scale.set(0.3, 1, 1);
+    bx(g, M.glassB, 34.2, 3.2, 24.2, 0, 3.4, -1);
+    bx(g, M.m(0x2c87c6, 0.3, 0.2), 34.3, 0.7, 24.3, 0, 7.8, -1);
+    bx(g, M.glassB, 7, 4, 0.5, 0, 0.4, 11.2); bx(g, M.white, 9, 0.5, 4, 0, 4.4, 12.6);
+    [-12, -6].forEach(x => { cy(g, M.white, 2.4, 2.4, 6, x, 0.4, 14.5, 20); cy(g, M.steel, 2.45, 2.45, 0.3, x, 6.4, 14.5, 20); });
+    P.beacon = sp(g, M.redL, 0.3, 15, 10.6, -1);
+    signPost(g, M, 'FLOTABILIDAD NEUTRAL', 'Piscina de entrenamiento EVA', 8, 15.5, 0, '#6FB6FF');
+  };
+  function plaza(g, M, r, name, sub, accent) {
+    cy(g, M.conc, r, r + 0.4, 0.5, 0, 0, 0, 40);
+    const ring = mk(g, new THREE.TorusGeometry(r - 0.3, 0.08, 6, 60), M.amber, 0, 0.52, 0, false); ring.rotation.x = Math.PI / 2;
+    signPost(g, M, name, sub, 0, r + 2.2, 0, accent); kiosk(g, M, 3.6, r + 1.3, 0);
+  }
+  BUILD.saturn_ex = function (g, P) {
+    const M = mats(); plaza(g, M, 8, 'SATURN V', 'El cohete de las misiones Apolo', '#FFB547');
+    const s = new THREE.Group(); s.position.y = 0.5; g.add(s);
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; bx(s, M.dark, 0.8, 4, 0.8, Math.cos(a) * 2.9, 0, Math.sin(a) * 2.9); }
+    const tex = T.saturn(), sm = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.55 });
+    [[0, 0], [1.25, 0.55], [-1.25, 0.55], [0.55, -1.25], [-0.55, -1.25]].slice(0, 5).forEach(([x, z], i) => bell(s, M.black, i ? 0.62 : 0.65, 2.6, i ? [1.4, -1.4, 0, 0][i - 1] : 0, 4.1, i ? [0, 0, 1.4, -1.4][i - 1] : 0));
+    cy(s, sm, 2.78, 2.78, 23.1, 0, 4, 0, 40);
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; const f = bx(s, M.black, 0.25, 3.2, 1.8, Math.cos(a) * 3.3, 4, Math.sin(a) * 3.3); f.rotation.y = -a; cy(s, M.black, 0.45, 0.75, 3.4, Math.cos(a) * 2.6, 3.6, Math.sin(a) * 2.6, 14); }
+    cy(s, M.white, 2.78, 2.78, 13.7, 0, 27.1, 0, 40); cy(s, M.black, 2.8, 2.8, 1.1, 0, 39.6, 0, 40); cy(s, M.black, 2.8, 2.8, 0.5, 0, 27.6, 0, 40);
+    cy(s, M.white, 1.82, 2.78, 3.0, 0, 40.8, 0, 40); cy(s, M.white, 1.82, 1.82, 9.8, 0, 43.8, 0, 32); cy(s, M.black, 1.84, 1.84, 2.0, 0, 43.8, 0, 32);
+    cy(s, M.grey, 1.84, 1.84, 0.5, 0, 53.6, 0, 32); cy(s, M.off, 1.07, 1.82, 4.7, 0, 54.1, 0, 32);
+    cy(s, M.steel, 1.07, 1.07, 2.4, 0, 58.8, 0, 28); cy(s, M.steel, 0.25, 1.07, 1.9, 0, 61.2, 0, 28);
+    const les = lattice(s, M.red, 0.6, 3.0, 0, 0, 1.0); les.position.y = 63.1; cy(s, M.red, 0.18, 0.3, 2.2, 0, 66.1, 0, 12); cy(s, M.red, 0.02, 0.18, 0.8, 0, 68.3, 0, 8);
+  };
+  BUILD.starship_ex = function (g, P) {
+    const M = mats(); plaza(g, M, 7, 'STARSHIP', 'Nave en desarrollo · SpaceX', '#B58CFF');
+    const s = new THREE.Group(); s.position.y = 0.5; g.add(s);
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; const l = cy(s, M.dark, 0.25, 0.3, 3.4, Math.cos(a) * 2.2, 0, Math.sin(a) * 2.2, 8); }
+    cy(s, M.dark, 2.6, 2.6, 0.3, 0, 3.2, 0, 32);
+    const ss = new THREE.MeshStandardMaterial({ map: T.starship(), roughness: 0.32, metalness: 0.55 });
+    for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; bell(s, M.dark, 0.35, 0.9, Math.cos(a) * 0.7, 4.1, Math.sin(a) * 0.7); bell(s, M.steel, 0.65, 1.3, Math.cos(a + 1) * 1.65, 4.3, Math.sin(a + 1) * 1.65); }
+    cy(s, ss, 2.48, 2.48, 20.5, 0, 4.3, 0, 40);
+    const nose = mk(s, lathe([[2.48, 0], [2.4, 2.2], [2.05, 4.4], [1.45, 6.2], [0.7, 7.4], [0.05, 7.9]], 40), ss, 0, 24.8, 0); nose.material = ss;
+    // aletas: dos delanteras pequeñas y dos traseras grandes, en el lado de las losetas
+    const tm = new THREE.MeshStandardMaterial({ map: T.tiles(), roughness: 0.6 });
+    [-1, 1].forEach(sd => { const f = bx(s, tm, 0.2, 3.4, 2.0, sd * 2.62, 25.6, 0.9); f.rotation.z = -sd * 0.12; const a = bx(s, tm, 0.25, 4.8, 3.0, sd * 2.75, 5.0, 0.6); a.rotation.z = -sd * 0.05; });
+    sp(s, M.dark, 0.2, 0, 21, 2.48);
+  };
+  BUILD.dragon_ex = function (g, P) {
+    const M = mats(); plaza(g, M, 4.6, 'CREW DRAGON', 'Nave comercial · SpaceX', '#6FB6FF');
+    const s = new THREE.Group(); s.position.y = 0.5; g.add(s);
+    cy(s, M.dark, 1.3, 1.5, 1.0, 0, 0, 0, 20);
+    const tm = new THREE.MeshStandardMaterial({ map: T.solar(), roughness: 0.45, metalness: 0.2 });
+    cy(s, tm, 1.85, 1.85, 3.0, 0, 1.0, 0, 36);
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; const f = bx(s, M.white, 0.12, 1.5, 0.9, Math.cos(a) * 2.0, 1.1, Math.sin(a) * 2.0); f.rotation.y = -a; }
+    cy(s, M.dark, 1.95, 1.95, 0.25, 0, 4.0, 0, 36);
+    const cap = mk(s, lathe([[1.95, 0], [1.9, 0.4], [1.45, 2.1], [1.15, 2.7], [0.95, 2.85]], 40), M.white, 0, 4.25, 0);
+    cap.material = M.white.clone(); cap.material.side = THREE.DoubleSide;
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + 0.3; const p = bx(s, M.black, 0.5, 0.42, 0.1, Math.cos(a) * 1.72, 5.2, Math.sin(a) * 1.72); p.rotation.y = -a + Math.PI / 2; p.rotation.x = 0.25; }
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4 + 0.15; const w = bx(s, M.glassB, 0.32, 0.4, 0.06, Math.cos(a) * 1.55, 5.9, Math.sin(a) * 1.55); w.rotation.y = -a + Math.PI / 2; w.rotation.x = -0.28; }
+    const nc = mk(s, lathe([[1.05, 0], [0.95, 0.35], [0.6, 0.7], [0.05, 0.85]], 32), M.white, 0, 7.15, 0); nc.position.x = -0.5; nc.rotation.z = 0.9; nc.position.y = 7.45;
+    cy(s, M.steel, 0.55, 0.6, 0.18, 0, 7.1, 0, 24);
+  };
+  BUILD.orion_ex = function (g, P) {
+    const M = mats(); plaza(g, M, 5.2, 'NAVE ORION', 'NASA · misiones Artemis', '#46E3C6');
+    const s = new THREE.Group(); s.position.y = 0.5; g.add(s);
+    for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; cy(s, M.dark, 0.25, 0.25, 2.2, Math.cos(a) * 1.4, 0, Math.sin(a) * 1.4, 8); }
+    bell(s, M.dark, 0.6, 1.4, 0, 3.4, 0);
+    const esm = new THREE.MeshStandardMaterial({ color: 0xe5e7ea, roughness: 0.5, metalness: 0.25 });
+    cy(s, esm, 2.05, 2.05, 3.6, 0, 2.6, 0, 32); cy(s, M.dark, 2.08, 2.08, 0.3, 0, 4.5, 0, 32);
+    for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; const r = bx(s, M.steel, 0.05, 3.4, 0.05, Math.cos(a) * 2.07, 2.7, Math.sin(a) * 2.07); }
+    // 4 alas solares en X
+    for (let i = 0; i < 4; i++) {
+      const a = i * Math.PI / 2 + Math.PI / 4, arm = new THREE.Group(); arm.position.set(Math.cos(a) * 2.05, 4.0, Math.sin(a) * 2.05); arm.rotation.y = -a; s.add(arm);
+      for (let k = 0; k < 3; k++) { const p = bx(arm, M.cells, 2.2, 0.06, 2.0, 0.6 + 1.1 + k * 2.3, 0, 0); }
+      bx(arm, M.steel, 7.6, 0.08, 0.12, 3.8, 0.03, 0);
+    }
+    cy(s, M.steel, 2.5, 2.1, 0.7, 0, 6.2, 0, 32); cy(s, M.dark, 2.52, 2.52, 0.25, 0, 6.9, 0, 40);
+    const cm = mk(s, lathe([[2.52, 0], [2.48, 0.3], [1.15, 2.95], [0.95, 3.1]], 40), new THREE.MeshStandardMaterial({ color: 0xd7d9dd, roughness: 0.5, metalness: 0.3 }), 0, 7.15, 0);
+    cm.material.side = THREE.DoubleSide;
+    cy(s, M.steel, 0.75, 0.9, 0.5, 0, 10.25, 0, 24);
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + 0.2; const w = bx(s, M.glassB, 0.36, 0.36, 0.06, Math.cos(a) * 1.7, 8.75, Math.sin(a) * 1.7); w.rotation.y = -a + Math.PI / 2; w.rotation.x = -0.45; }
+  };
+
+  /* --- base lunar al estilo de la imagen de referencia (domos, invernadero de vidrio, paneles, módulo acanalado) --- */
+  BUILD.moonbase = function (g, P) {
+    const M = mats(); M.white = M.m(0xa4a8b0, 0.6); M.off = M.m(0x92979f, 0.65);
+    // domo principal blanco con antena
+    cy(g, M.white, 4.6, 4.6, 3.2, -3, 0.2, -2, 40);
+    const dome = mk(g, new THREE.SphereGeometry(4.6, 40, 16, 0, Math.PI * 2, 0, Math.PI / 2), M.white, -3, 3.4, -2);
+    for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; const r = bx(g, M.off, 0.12, 3.2, 0.12, -3 + Math.cos(a) * 4.62, 0.2, -2 + Math.sin(a) * 4.62); }
+    bx(g, M.amber, 0.5, 0.25, 0.08, -3, 2.6, 2.64);
+    cy(g, M.steel, 0.12, 0.12, 1.6, -3, 7.8, -2, 8); const dsh = mk(g, new THREE.SphereGeometry(1.1, 20, 8, 0, Math.PI * 2, 0, 1.05), M.white.clone(), -3, 9.9, -2); dsh.rotation.x = Math.PI + 0.6; dsh.material.side = THREE.DoubleSide;
+    // puerta / esclusa con escalera
+    bx(g, M.white, 2.2, 2.6, 2.4, -3, 0.2, 3.6); bx(g, M.dark, 1.0, 1.8, 0.1, -3, 0.5, 4.82); sp(g, M.amber, 0.12, -3, 2.55, 4.85);
+    for (let i = 0; i < 3; i++) bx(g, M.grey, 1.4, 0.1, 0.45, -3, 0.15 + i * 0.12, 5.1 + i * 0.45 - 0.9 + 0.9);
+    // invernadero de vidrio (domo geodésico) con plantas
+    const gx = 6.5, gz = -3.5;
+    cy(g, M.white, 4.2, 4.2, 0.9, gx, 0.2, gz, 40);
+    const gd = mk(g, new THREE.SphereGeometry(4.0, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2), M.glassG, gx, 1.1, gz, false);
+    const wf = new THREE.Mesh(new THREE.SphereGeometry(4.02, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xd9dee6, wireframe: true, transparent: true, opacity: 0.55 })); wf.position.set(gx, 1.1, gz); g.add(wf);
+    const lf = M.m(0x3f9a4a, 0.8), lf2 = M.m(0x7cc44c, 0.8);
+    for (let i = 0; i < 18; i++) { const a = i * 2.4, r = 0.6 + (i % 5) * 0.6; const h = 0.6 + (i % 3) * 0.5; sp(g, i % 2 ? lf : lf2, 0.5 + (i % 3) * 0.15, gx + Math.cos(a) * r, 1.1 + h, gz + Math.sin(a) * r).scale.y = 1.3; }
+    // túnel entre domos
+    const tun = cy(g, M.white, 1.1, 1.1, 4.5, 1.6, 1.3, -2.8, 20); tun.rotation.z = Math.PI / 2; tun.position.y = 1.4;
+    // módulo cilíndrico acanalado con escalera (derecha de la imagen)
+    const mod = new THREE.Group(); mod.position.set(3.5, 0, 7.5); mod.rotation.y = 0.2; g.add(mod);
+    const body = cy(mod, M.off, 2.2, 2.2, 9, 0, 0, 0, 24); body.rotation.z = Math.PI / 2; body.position.set(0, 2.6, 0);
+    for (let i = 0; i < 6; i++) { const rib = cy(mod, M.steel, 2.28, 2.28, 0.18, 0, 0, 0, 24); rib.rotation.z = Math.PI / 2; rib.position.set(-4 + i * 1.6, 2.6, 0); }
+    for (const x of [-3.2, 3.2]) for (const z of [-1.3, 1.3]) bx(mod, M.grey, 0.25, 1.0, 0.25, x, 0, z);
+    for (let i = 0; i < 6; i++) bx(mod, M.grey, 1.1, 0.08, 0.5, -5.2 - i * 0.42, 0.25 + i * 0.36, 0);
+    const rail = bx(mod, M.steel, 0.06, 0.06, 3.4, -6.1, 1.9, 0.55); rail.rotation.y = Math.PI / 2; rail.rotation.z = 0.7;
+    // hilera de paneles solares
+    for (let i = 0; i < 8; i++) { const px = -11 + i * 2.5, pz = -9.5; cy(g, M.steel, 0.06, 0.06, 1.2, px, 0.2, pz, 6); const p = bx(g, M.cells, 2.3, 0.05, 1.4, px, 1.4, pz); p.rotation.x = -0.5; }
+    // telescopio
+    const tel = new THREE.Group(); tel.position.set(-9.5, 0.2, 4.5); g.add(tel);
+    cy(tel, M.dark, 0.6, 0.6, 0.6, 0, 0, 0, 12); cy(tel, M.steel, 0.12, 0.12, 1.6, 0, 0.6, 0, 8); const tb = cy(tel, M.white, 0.45, 0.45, 3, 0, 1.2, 0.6, 16); tb.rotation.x = -0.8;
+    P.beacon = sp(g, M.m(0x46E3C6, 0.3, 0, { emissive: 0x46E3C6, emissiveIntensity: 1.2 }), 0.18, -3, 8.3, -2);
+  };
+  /* --- rover de 6 ruedas (como en la imagen) --- */
+  BUILD.rover = function (g, P) {
+    const M = mats();
+    const s = new THREE.Group(); s.position.y = 0.1; g.add(s);
+    bx(s, M.white, 2.2, 0.9, 3.2, 0, 0.9, 0); bx(s, M.off, 1.6, 0.6, 1.4, 0, 1.8, -0.6); bx(s, M.white, 1.2, 0.5, 1.0, 0.3, 1.8, 0.8);
+    bx(s, M.cells, 2.4, 0.05, 1.5, 0, 2.45, -0.6);
+    for (const x of [-1.25, 1.25]) for (const z of [-1.2, 0, 1.2]) { const w = cy(s, M.dark, 0.48, 0.48, 0.42, x, 0, z, 18); w.rotation.z = Math.PI / 2; w.position.y = 0.5; const hub = cy(s, M.steel, 0.2, 0.2, 0.46, x, 0, z, 10); hub.rotation.z = Math.PI / 2; hub.position.y = 0.5; bx(s, M.grey, 0.5, 0.12, 0.12, x * 0.78, 0.9, z); }
+    cy(s, M.steel, 0.05, 0.05, 1.5, -0.7, 1.8, 1.2, 6); bx(s, M.white, 0.45, 0.3, 0.3, -0.7, 3.2, 1.2); bx(s, M.glassB, 0.12, 0.12, 0.04, -0.6, 3.3, 1.36);
+    P.beacon = sp(s, M.amber, 0.08, 0.9, 1.5, 1.6);
+  };
+
+  const prevLandmark = S.landmark;
+  S.landmark = function (kind) {
+    const f = BUILD[kind];
+    if (!f) return prevLandmark(kind);
+    const g = new THREE.Group(), P = {};
+    f(g, P);
+    return { kind, group: g, parts: P, t: 0, update(dt) { this.t += dt; if (P.beacon) P.beacon.visible = Math.sin(this.t * 3) > -0.4; } };
+  };
+
+  /* ---------------- caminos, farolas y piedras (al crear el mundo) ---------------- */
+  const prevCreate = W.create;
+  W.create = function (planetId, opts) {
+    const w = prevCreate.call(W, planetId, opts);
+    opts = opts || {};
+    try {
+      if (planetId === 'earth' && !opts.menu) buildRoads(w);
+      if ((planetId === 'moon' || planetId === 'mars') && !opts.menu) scatterPebbles(w, planetId);
+    } catch (e) { JSM.reportError && JSM.reportError('Centro espacial: ' + e.message, e.stack); }
+    return w;
+  };
+  function ribbon(w, x1, z1, x2, z2, width, mat, lift) {
+    const L = Math.hypot(x2 - x1, z2 - z1), n = Math.max(2, Math.ceil(L / 3)), dx = (x2 - x1) / L, dz = (z2 - z1) / L, nx = -dz * width / 2, nz = dx * width / 2;
+    const pos = [], uv = [], idx = [];
+    for (let i = 0; i <= n; i++) {
+      const k = i / n, x = x1 + (x2 - x1) * k, z = z1 + (z2 - z1) * k;
+      const hl = w.heightAt(x + nx, z + nz), hr = w.heightAt(x - nx, z - nz);
+      pos.push(x + nx, hl + lift, z + nz, x - nx, hr + lift, z - nz); uv.push(0, k * L / 8, 1, k * L / 8);
+      if (i < n) { const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+    }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, mat); m.receiveShadow = true; w.scene.add(m); return m;
+  }
+  function buildRoads(w) {
+    const road = new THREE.MeshStandardMaterial({ map: T.road(), roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+    const crawl = new THREE.MeshStandardMaterial({ map: T.gravel(), roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+    const poleM = new THREE.MeshStandardMaterial({ color: 0x8d939c, roughness: 0.5, metalness: 0.4 }), headM = new THREE.MeshStandardMaterial({ color: 0xfff0d0, emissive: 0xffe0a8, emissiveIntensity: 0.9 });
+    const poleG = new THREE.CylinderGeometry(0.09, 0.12, 6, 6), armG = new THREE.BoxGeometry(1.2, 0.1, 0.1), headG = new THREE.BoxGeometry(0.5, 0.12, 0.25);
+    W.ROADS.earth.forEach(r => {
+      const wide = r[4] >= 11;
+      ribbon(w, r[0], r[1], r[2], r[3], r[4], wide ? crawl : road, 0.08);
+      if (wide) return;
+      const L = Math.hypot(r[2] - r[0], r[3] - r[1]), dx = (r[2] - r[0]) / L, dz = (r[3] - r[1]) / L;
+      for (let d = 10, side = 1; d < L - 4; d += 22, side = -side) {
+        const x = r[0] + dx * d - dz * (r[4] / 2 + 1.2) * side, z = r[1] + dz * d + dx * (r[4] / 2 + 1.2) * side, y = w.heightAt(x, z);
+        const p = new THREE.Mesh(poleG, poleM); p.position.set(x, y + 3, z); w.scene.add(p);
+        const a = new THREE.Mesh(armG, poleM); a.position.set(x + dz * 0.6 * side, y + 6, z - dx * 0.6 * side); a.rotation.y = Math.atan2(dx, dz) + Math.PI / 2; w.scene.add(a);
+        const h = new THREE.Mesh(headG, headM); h.position.set(x + dz * 1.1 * side, y + 5.9, z - dx * 1.1 * side); h.rotation.y = a.rotation.y; w.scene.add(h);
+      }
+    });
+    // letrero de bienvenida
+    const M = mats(); const gate = new THREE.Group(); gate.position.set(0, w.heightAt(0, -30), -30); w.scene.add(gate);
+    signPost(gate, M, 'CENTRO ESPACIAL ORIÓN', 'Kennedy + Johnson · inspirado en centros reales', -7.5, 0, 0, '#FFB547');
+  }
+  function scatterPebbles(w, pid) {
+    const n = pid === 'moon' ? 1100 : 800;
+    const geo = new THREE.DodecahedronGeometry(1, 0);
+    const col = pid === 'moon' ? 0x6f727c : 0x7a3b22;
+    const mat = new THREE.MeshStandardMaterial({ color: col, roughness: 1, flatShading: true });
+    const im = new THREE.InstancedMesh(geo, mat, n); im.castShadow = false; im.receiveShadow = true;
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3(), sc = new THREE.Vector3();
+    let k = 0; const rnd = U.rng(pid === 'moon' ? 909 : 707), lms = w.landmarks;
+    for (let t = 0; t < n * 3 && k < n; t++) {
+      const a = rnd() * Math.PI * 2, d = 6 + Math.pow(rnd(), 0.7) * 185, x = Math.cos(a) * d, z = Math.sin(a) * d;
+      if (lms.some(l => U.dist2(x, z, l.x, l.z) < l.r + 2)) continue;
+      const s = 0.07 + Math.pow(rnd(), 3.2) * 0.75;
+      e.set(rnd() * 3, rnd() * 3, rnd() * 3); q.setFromEuler(e); sc.set(s * (0.8 + rnd() * 0.6), s * (0.5 + rnd() * 0.4), s * (0.8 + rnd() * 0.6));
+      v.set(x, w.heightAt(x, z) + sc.y * 0.3, z); m4.compose(v, q, sc); im.setMatrixAt(k++, m4);
+    }
+    im.count = k; im.instanceMatrix.needsUpdate = true; w.scene.add(im); w.pebbles = im;
+  }
+
+  /* ---------------- interiores nuevos ---------------- */
+  const IR = JSM.Interior, ROOMS = IR.ROOMS;
+  ROOMS.vab = function (c) {
+    const R = IR.newRoom(24, 22, 20, { name: 'Hangar de ensamblaje', wall: 0xd7dbe2, floor: 0x9a9fa8, accent: 0xFFB547, planet: 'earth' }), M = R.M, w = R.w, d = R.d;
+    R.window('left', 0, 2.4, 6, 9); R.window('right', 0, 2.4, 6, 9);
+    // líneas del pasillo de transferencia
+    [-3.2, 3.2].forEach(x => R.box(M.amber, 0.12, 0.02, d - 1, x, 0, 0.01));
+    // cohete en armado (núcleo + propulsores)
+    const orange = new THREE.MeshStandardMaterial({ map: T.foam(), roughness: 0.75 });
+    R.cyl(M.dark, 2.0, 1.2, 0, -3, 0); R.cyl(orange, 1.8, 15, 0, -3, 1.2); R.cyl(M.white, 1.8, 0.4, 0, -3, 16.2);
+    [-1, 1].forEach(sx => { R.cyl(M.white, 0.75, 13, sx * 2.8, -3, 0.6); R.cyl(M.white, 0.5, 1.0, sx * 2.8, -3, 13.6); });
+    R.solid(0, -3, 7.6, 4.2);
+    // plataformas de trabajo con barandal amarillo
+    [5, 10, 14.5].forEach(y => { [-1, 1].forEach(sd => { R.box(M.metal, 8.2, 0.25, 2.2, sd * 7.9, -3, y); R.box(M.amber, 8.2, 0.06, 0.06, sd * 7.9, -3 + 1.05, y + 1.0); }); });
+    [-1, 1].forEach(sd => { R.box(M.metal, 0.4, 16, 0.4, sd * 11.5, -4.5, 0); R.box(M.metal, 0.4, 16, 0.4, sd * 11.5, -1.5, 0); });
+    // grúa puente
+    R.box(M.amber, w - 0.5, 0.8, 1.0, 0, -3, h(R) - 1.6); R.box(M.dark, 1.2, 0.8, 1.6, 0, -3, h(R) - 2.4); R.cyl(M.metal, 0.03, 2.3, 0, -3, h(R) - 4.8);
+    // banco de ingeniería con un motor sobre soporte
+    R.box(M.white, 4.0, 0.95, 1.2, -7.5, 5.5, 0); R.box(M.dark, 4.1, 0.05, 1.3, -7.5, 5.5, 0.95); R.solid(-7.5, 5.5, 4.1, 1.3);
+    R.screen('chart', 1.6, 0.9, -8.5, 1.9, 4.85, 0); R.screen('code', 1.6, 0.9, -6.6, 1.9, 4.85, 0);
+    const eb = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 1.0, 2.2, 22, 1, true), M.dark); eb.material = M.dark.clone(); eb.material.side = THREE.DoubleSide; eb.position.set(6.5, 1.6, 5.5); R.g.add(eb); R.cyl(M.metal, 0.4, 0.5, 6.5, 5.5, 2.7); R.box(M.metal, 1.6, 0.5, 1.6, 6.5, 5.5, 0); R.solid(6.5, 5.5, 2.0, 2.0);
+    R.hotspot(-7.5, 7.0, 'Práctica de ingeniería', ['engineering'], { x: -7.5, z: 5.5 });
+    R.hotspot(0, 1.0, 'Inspeccionar el cohete', ['inspect_vehicle'], { x: 0, z: -3 }, { r: 1.6 });
+    R.crate(10.5, 8.5, 1.2); R.crate(9.0, 8.8, 0.9);
+    return R;
+  };
+  const h = R => R.h;
+  ROOMS.mcc = function (c) {
+    const R = IR.newRoom(16, 13, 4.6, { name: 'Centro de control de misiones', wall: 0x5b6680, floor: 0x2b3554, accent: 0x6FB6FF, planet: 'earth' }), M = R.M, w = R.w, d = R.d;
+    // 5 pantallas grandes
+    R.screen('map', 5.2, 2.6, 0, 2.6, -d / 2 + 0.07, 0);
+    R.screen('chart', 2.4, 1.4, -4.8, 3.0, -d / 2 + 0.07, 0); R.screen('life', 2.4, 1.4, 4.8, 3.0, -d / 2 + 0.07, 0);
+    R.screen('code', 2.0, 1.1, -6.9, 1.5, -d / 2 + 0.07, 0); R.screen('chart', 2.0, 1.1, 6.9, 1.5, -d / 2 + 0.07, 0);
+    // 4 estaciones de trabajo (2 filas)
+    const consoles = [[-3.6, -2.0], [3.6, -2.0], [-3.6, 1.6], [3.6, 1.6]];
+    consoles.forEach(([x, z], i) => {
+      R.box(M.dark, 5.4, 0.9, 1.1, x, z, 0); R.box(M.black, 5.5, 0.06, 1.2, x, z, 0.9);
+      [-1.7, 0, 1.7].forEach((ox, j) => { const s = R.screen(['chart', 'code', 'life', 'map'][(i + j) % 4], 1.25, 0.75, x + ox, 1.45, z - 0.25, 0); s.rotation.x = -0.12; });
+      [-1.4, 1.4].forEach(ox => { R.cyl(M.cloth, 0.3, 0.1, x + ox, z + 1.1, 0.45); R.box(M.cloth, 0.55, 0.6, 0.1, x + ox, z + 1.4, 0.55); R.cyl(M.metal, 0.05, 0.45, x + ox, z + 1.1, 0); });
+      R.solid(x, z, 5.5, 1.3);
+    });
+    R.hotspot(-3.6, -0.6, 'Analizar telemetría', ['telemetry'], { x: -3.6, z: -2.0 });
+    R.hotspot(3.6, -0.6, 'Analizar telemetría', ['telemetry'], { x: 3.6, z: -2.0 });
+    R.hotspot(3.6, 3.0, 'Revisar una misión', ['mission_review'], { x: 3.6, z: 1.6 });
+    R.light(0, 3.8, -d / 2 + 1.5, 0x9ec8ff, 0.55, 12);
+    return R;
+  };
+  ROOMS.nbl = function (c) {
+    const PW = 16, PD = 9, PZ = -2.5, DEP = 6.5;
+    const R = IR.newRoom(24, 19, 10, { name: 'Laboratorio de flotabilidad neutral', wall: 0xdde6f0, floor: 0xb8c0cc, accent: 0x6FB6FF, planet: 'earth', hole: { x: 0, z: PZ, w: PW, d: PD } }), M = R.M, w = R.w, d = R.d;
+    R.window('left', -4, 5, 4, 5); R.window('right', -4, 5, 4, 5);
+    // paredes y fondo de la piscina (azulejos)
+    const tile = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, map: (() => { const t = U.canvasTex(128, 128, (g2, a, b) => { g2.fillStyle = '#7fc6ee'; g2.fillRect(0, 0, a, b); g2.strokeStyle = 'rgba(255,255,255,.55)'; g2.lineWidth = 2; for (let i = 0; i <= a; i += 16) { g2.beginPath(); g2.moveTo(i, 0); g2.lineTo(i, b); g2.stroke(); g2.beginPath(); g2.moveTo(0, i); g2.lineTo(a, i); g2.stroke(); } }); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(6, 3); return t; })() });
+    const wall = (pw, x, z, ry) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(pw, DEP), tile); p.position.set(x, -DEP / 2, z); p.rotation.y = ry; R.g.add(p); };
+    wall(PW, 0, PZ - PD / 2, 0); wall(PW, 0, PZ + PD / 2, Math.PI); wall(PD, -PW / 2, PZ, Math.PI / 2); wall(PD, PW / 2, PZ, -Math.PI / 2);
+    const bot = new THREE.Mesh(new THREE.PlaneGeometry(PW, PD), tile); bot.rotation.x = -Math.PI / 2; bot.position.set(0, -DEP, PZ); R.g.add(bot);
+    // maquetas de la estación espacial bajo el agua
+    const modM = M.m(0xe6e8ec, 0.5, 0.2);
+    const m1 = R.cyl(modM, 1.4, 7, -2, PZ, -4.6); m1.rotation.z = Math.PI / 2; m1.position.set(-2, -4.0, PZ);
+    const m2 = R.cyl(modM, 1.2, 4, 3.5, PZ, -4.6); m2.rotation.x = Math.PI / 2; m2.position.set(3.0, -4.2, PZ);
+    R.box(M.metal, 9, 0.5, 0.5, 1, PZ + 2.6, -5.8); R.box(M.m(0x22407e, 0.3, 0.4), 3.2, 0.05, 1.8, 5.2, PZ + 2.6, -5.5);
+    // agua
+    const water = new THREE.Mesh(new THREE.PlaneGeometry(PW, PD), new THREE.MeshStandardMaterial({ color: 0x2b8fd0, roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.45, depthWrite: false }));
+    water.rotation.x = -Math.PI / 2; water.position.set(0, -0.35, PZ); R.g.add(water);
+    // astronauta entrenando bajo el agua
+    try {
+      const diver = new JSM.Astronaut(Object.assign(D.defaultAppearance(), { name: 'Buzo', suitColor: '#e9edf5', helmet: 2 }));
+      diver.group.position.set(-0.5, -3.1, PZ + 1.4); diver.group.rotation.set(0.3, 0.6, 0); R.g.add(diver.group);
+      R.anim.push((dt, t) => { diver.animate(dt, 'work'); diver.group.position.y = -3.1 + Math.sin(t * 0.7) * 0.15; diver.group.rotation.z = Math.sin(t * 0.5) * 0.08; });
+      R.diver = diver;
+    } catch (e) { }
+    // barandal alrededor de la piscina (con hueco en la zona de entrada al agua)
+    const rail = (x1, z1, x2, z2) => { const L = Math.hypot(x2 - x1, z2 - z1); const b = R.box(M.amber, L, 0.06, 0.06, (x1 + x2) / 2, (z1 + z2) / 2, 1.0); b.rotation.y = -Math.atan2(z2 - z1, x2 - x1); for (let k = 0; k <= L; k += 1.6) R.box(M.metal, 0.05, 1.0, 0.05, x1 + (x2 - x1) * k / L, z1 + (z2 - z1) * k / L, 0); };
+    const x0 = -PW / 2 - 0.3, x1 = PW / 2 + 0.3, z0 = PZ - PD / 2 - 0.3, z1 = PZ + PD / 2 + 0.3;
+    rail(x0, z0, x1, z0); rail(x0, z0, x0, z1); rail(x1, z0, x1, z1); rail(x0, z1, -1.5, z1); rail(1.5, z1, x1, z1);
+    R.solid(0, PZ, PW + 0.8, PD + 0.8);
+    // grúa sobre la piscina y consola
+    R.box(M.amber, PW + 2, 0.6, 0.8, 0, PZ, 8.6); R.box(M.metal, 0.5, 9, 0.5, -PW / 2 - 1, PZ, 0); R.box(M.metal, 0.5, 9, 0.5, PW / 2 + 1, PZ, 0);
+    R.box(M.dark, 2.8, 0.95, 0.9, w / 2 - 2.2, d / 2 - 2.4, 0); R.screen('life', 1.0, 0.6, w / 2 - 2.8, 1.4, d / 2 - 2.8, 0); R.screen('chart', 1.0, 0.6, w / 2 - 1.6, 1.4, d / 2 - 2.8, 0); R.solid(w / 2 - 2.2, d / 2 - 2.4, 2.8, 0.9);
+    R.hotspot(0, z1 + 0.9, 'Entrenamiento EVA', ['eva_train'], { x: 0, z: PZ }, { r: 1.5 });
+    R.hotspot(w / 2 - 2.2, d / 2 - 1.2, 'Revisar procedimientos', ['mission_review'], { x: w / 2 - 2.2, z: d / 2 - 2.4 });
+    R.light(0, -3, PZ, 0x5fc8ff, 0.9, 14);
+    R.spawn = { x: -6, z: d / 2 - 1.5 };
+    return R;
+  };
+  ROOMS.dragon_ex = function (c) {
+    const R = IR.newRoom(4.8, 4.4, 2.6, { name: 'Cabina de Crew Dragon', wall: 0xe8eaee, floor: 0x3a3f4a, accent: 0x6FB6FF, planet: 'earth' }), M = R.M, w = R.w, d = R.d;
+    R.window('back', -1.3, 0.5, 0.5, 1.6); R.window('back', 1.3, 0.5, 0.5, 1.6);
+    // 3 pantallas táctiles grandes sobre los asientos
+    [-1.25, 0, 1.25].forEach((x, i) => { const s = R.screen(['map', 'chart', 'life'][i], 1.1, 0.7, x, 1.75, -d / 2 + 0.6, 0); s.rotation.x = 0.3; });
+    R.box(M.black, 4.0, 0.08, 0.8, 0, -d / 2 + 0.7, 1.35);
+    [-1.5, -0.5, 0.5, 1.5].forEach(x => { R.box(M.black, 0.75, 0.12, 0.8, x, -0.4, 0.45); const b = R.box(M.black, 0.75, 0.8, 0.12, x, 0.05, 0.5); b.rotation.x = -0.5; R.box(M.white, 0.3, 0.2, 0.1, x, 0.32, 1.2); R.box(M.metal, 0.5, 0.45, 0.5, x, -0.4, 0); });
+    R.hotspot(1.9, 1.3, 'Revisar la cabina', ['inspect_vehicle'], { x: 0, z: -d / 2 }, { r: 1.0 });
+    R.light(0, 2.2, 0, 0xe8f0ff, 0.45, 8);
+    return R;
+  };
+  ROOMS.orion_ex = function (c) { const R = ROOMS.orion(c); R.name = 'Cabina de Orion'; R.hotspot(1.95, 1.4, 'Revisar la cabina', ['inspect_vehicle'], { x: 0, z: -R.d / 2 }, { r: 1.0 }); return R; };
+  // entrenamiento: estación EVA con traje sobre soporte
+  const prevTraining = ROOMS.training;
+  ROOMS.training = function (c) {
+    const R = prevTraining(c), M = R.M;
+    R.box(M.dark, 1.4, 0.2, 1.4, 2.8, 2.4, 0); R.box(M.metal, 0.12, 2.2, 0.12, 2.8, 1.8, 0);
+    try { const suit = new JSM.Astronaut(Object.assign(D.defaultAppearance(), { name: 'Traje EVA', suitColor: '#f2f2f0', suitColor2: '#ff5d73', helmet: 2 })); suit.group.position.set(2.8, 0.2, 2.4); suit.group.rotation.y = Math.PI; R.g.add(suit.group); suit.animate(0.016, 'idle'); } catch (e) { }
+    R.solid(2.8, 2.4, 1.5, 1.5);
+    R.hotspot(1.3, 2.4, 'Entrenamiento EVA', ['eva_train'], { x: 2.8, z: 2.4 }, { r: 1.1 });
+    return R;
+  };
+  const prevAcademy = ROOMS.academy;
+  ROOMS.academy = function (c) {
+    const R = prevAcademy(c), M = R.M;
+    R.screen('map', 1.8, 1.0, -R.w / 2 + 0.06, 1.8, 1.6, Math.PI / 2);
+    R.hotspot(-R.w / 2 + 1.3, 1.6, 'Revisar misiones', ['mission_review'], { x: -R.w / 2, z: 1.6 }, { r: 1.0 });
+    return R;
+  };
+  const prevLaunch = ROOMS.launchpad;
+  ROOMS.launchpad = function (c) {
+    const R = prevLaunch(c);
+    R.hotspot(2.6, 0.5, 'Revisar la misión', ['mission_review'], { x: 2.6, z: -R.d / 2 }, { r: 1.0 });
+    return R;
   };
 })(window.JSM);
 

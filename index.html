@@ -4529,10 +4529,16 @@ window.JSM = window.JSM || {};
       Game.gamepads[e.gamepad.index] = e.gamepad;
       Game.gpIndex = e.gamepad.index;
       try { UI.toast && UI.toast('Mando conectado: ' + (e.gamepad.id || 'Mando'), '', 'gamepad'); } catch (er) { }
+      var bc = document.getElementById('gp-connect'); var bs = document.getElementById('gp-status');
+      if(bc) bc.style.display='none';
+      if(bs) bs.style.display='block';
     });
     addEventListener('gamepaddisconnected', (e) => {
       if (Game.gamepads[e.gamepad.index]) delete Game.gamepads[e.gamepad.index];
       if (Game.gpIndex === e.gamepad.index) Game.gpIndex = null;
+      var bc = document.getElementById('gp-connect'); var bs = document.getElementById('gp-status');
+      if(bc) bc.style.display='block';
+      if(bs) bs.style.display='none';
     });
     let down = null;
     canvas.addEventListener('pointerdown', (e) => {
@@ -7777,6 +7783,21 @@ window.JSM = window.JSM || {};
     } catch (e) { JSM.fatal('Error durante la carga', e.message + '\n' + e.stack); }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+
+/* --- indicador y botón de mando para Android/gamepad --- */
+(function(){
+  var style = document.createElement('style');
+  style.textContent = '#gp-wrap{position:fixed;left:12px;bottom:12px;z-index:60;display:flex;flex-direction:column;gap:8px;pointer-events:none}#gp-connect{pointer-events:auto;background:rgba(15,24,44,.9);color:#ffd0d7;border:1px solid rgba(255,93,115,.6);border-radius:10px;padding:10px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(6px)}#gp-connect:hover{background:rgba(255,93,115,.2)}#gp-status{pointer-events:none;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.06);color:#46e3c6;font-size:12px;border:1px solid rgba(70,227,198,.35);display:none}';
+  document.head.appendChild(style);
+  var wrap = document.createElement('div'); wrap.id='gp-wrap';
+  var btn = document.createElement('button'); btn.id='gp-connect'; btn.textContent='Conectar mando';
+  var st = document.createElement('div'); st.id='gp-status'; st.textContent='Mando conectado';
+  wrap.appendChild(btn); wrap.appendChild(st); document.body.appendChild(wrap);
+  btn.onclick = function(){
+    try { (document.getElementById('gl') || document.body).focus(); } catch(e){}
+    try { UI.toast && UI.toast('Pulsa cualquier botón del mando para activarlo', '', 'gamepad'); } catch(e){}
+  };
+})();
 })(window.JSM);
 
 </script>

@@ -4553,7 +4553,6 @@ window.JSM = window.JSM || {};
 
   /* --- lectura del mando cada frame (ejes no disparan eventos) --- */
   Game.pollGamepad = function () {
-    if (Game.mode !== 'play') return;
     const gp = Game.gp; gp.ix = gp.iz = gp.lookX = gp.lookY = 0;
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     let pad = null;
@@ -4571,13 +4570,27 @@ window.JSM = window.JSM || {};
     const rise = (i) => now[i] === 1 && (!prev[i] || prev[i] === 0);
     Game.gpPrev = now;
     gp.run = pressed(4) || (pad.axes.length > 5 && pad.axes[5] > 0.4);
-    if (rise(0)) { Game.interact(); }              // A / cruz
-    if (rise(2)) { Game.scan(); }                 // X / cuadrado
-    if (rise(1)) { Game.jumpQueued = true; Game.keys[' '] = true; }  // B / círculo
-    if (rise(3)) { Game.toggleBuild(); }          // Y / triángulo
-    if (rise(9)) Game.onEscape();                 // Inicio / Opciones
-    if (rise(12)) Game.setSpeed(4);               // cruceta arriba
-    if (rise(13)) Game.setSpeed(0);               // cruceta abajo
+    const mode = Game.mode;
+    if (mode === 'play' || mode === 'travel') {
+      if (rise(0)) { Game.interact(); }              // A / cruz
+      if (rise(2)) { Game.scan(); }                 // X / cuadrado
+      if (rise(1)) { Game.jumpQueued = true; Game.keys[' '] = true; }  // B / círculo
+      if (rise(3)) { Game.toggleBuild(); }          // Y / triángulo
+      if (rise(9)) Game.onEscape();                 // Inicio / Opciones
+      if (rise(12)) Game.setSpeed(4);               // cruceta arriba
+      if (rise(13)) Game.setSpeed(0);               // cruceta abajo
+    } else if (mode === 'flight') {
+      if (rise(0)) { F.press(); }                   // A / cruz: despegar / aterrizar / saltar cuenta
+      if (rise(1)) { F.toggleView(); }              // B / círculo: cambiar vista
+      if (rise(9)) Game.onEscape();                 // Inicio / Opciones
+    } else if (I.active && I.R) {
+      if (rise(0)) { I.interact(); }                // A / cruz: usar punto de interés
+      if (rise(1)) { if (I.exit) I.exit(); }        // B / círculo: salir
+      if (rise(9)) Game.onEscape();                 // Inicio / Opciones
+    } else {
+      if (rise(0) || rise(2)) { }                  // menús: A/X aceptan si hay foco nativo
+      if (rise(9)) Game.onEscape();                 // Inicio / Opciones
+    }
   };
   Game.bindTouch = function () {
     const touch = matchMedia('(pointer: coarse)').matches; Game.isTouch = touch;
@@ -6225,12 +6238,12 @@ window.JSM = window.JSM || {};
   };
   function updateSpace(dt) {
     const S = F.space, s = F.s, t = (F.t += dt), cam = S.cam, K = F.in.keys;
-    // entrada
-    let ix = (K.d || K.arrowright ? 1 : 0) - (K.a || K.arrowleft ? 1 : 0) + F.in.jx;
-    let iy = (K.w || K.arrowup ? 1 : 0) - (K.s || K.arrowdown ? 1 : 0) - F.in.jy;
+    // entrada (teclado, joystick táctil y mando)
+    let ix = (K.d || K.arrowright ? 1 : 0) - (K.a || K.arrowleft ? 1 : 0) + F.in.jx + Game.gp.ix;
+    let iy = (K.w || K.arrowup ? 1 : 0) - (K.s || K.arrowdown ? 1 : 0) - F.in.jy + Game.gp.iz;
     if (G.settings.invertY) iy = -iy;
     ix = clamp(ix, -1, 1); iy = clamp(iy, -1, 1);
-    const boost = (K.shift || F.in.boostTouch) && F.phase === 'cruise';
+    const boost = (K.shift || F.in.boostTouch || Game.gp.run) && F.phase === 'cruise';
     const steering = Math.abs(ix) + Math.abs(iy) > 0.1;
     s.idle = steering ? 0 : s.idle + dt;
     // velocidad hacia delante
@@ -6346,6 +6359,7 @@ window.JSM = window.JSM || {};
 
   F.update = function (dt) {
     if (F.phase === 'done') return;
+    Game.pollGamepad();
     const asp = innerWidth / innerHeight;
     if (F.pad) { if (F.pad.cam.aspect !== asp) { F.pad.cam.aspect = asp; F.pad.cam.updateProjectionMatrix(); } updatePad(dt); }
     else if (F.space) { if (F.space.cam.aspect !== asp) { F.space.cam.aspect = asp; F.space.cam.updateProjectionMatrix(); } updateSpace(dt); }

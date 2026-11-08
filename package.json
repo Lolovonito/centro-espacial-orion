@@ -1,14 +1,6 @@
 {
   "name": "centro-espacial-orion",
   "version": "1.0.0",
-  "description": "Centro Espacial Orión - integración educativa para Junior Mission Orión",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "start": "npx serve .",
-    "deploy": "firebase deploy --only hosting"
-  },
-  "dependencies": {
-    "three": "0.128.0"
-  }
+  "description": "Junior Mission Orión — juego 3D con Three.js r128",
+  "private": true
 }

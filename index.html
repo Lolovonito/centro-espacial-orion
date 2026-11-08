@@ -6256,11 +6256,11 @@ window.JSM = window.JSM || {};
   function updateSpace(dt) {
     const S = F.space, s = F.s, t = (F.t += dt), cam = S.cam, K = F.in.keys;
     // entrada
-    let ix = (K.d || K.arrowright ? 1 : 0) - (K.a || K.arrowleft ? 1 : 0) + F.in.jx + Game.gp.ix;
-    let iy = (K.w || K.arrowup ? 1 : 0) - (K.s || K.arrowdown ? 1 : 0) - F.in.jy + Game.gp.iz;
+    let ix = (K.d || K.arrowright ? 1 : 0) - (K.a || K.arrowleft ? 1 : 0) + F.in.jx + G.gp.ix;
+    let iy = (K.w || K.arrowup ? 1 : 0) - (K.s || K.arrowdown ? 1 : 0) - F.in.jy + G.gp.iz;
     if (G.settings.invertY) iy = -iy;
     ix = clamp(ix, -1, 1); iy = clamp(iy, -1, 1);
-    const boost = (K.shift || F.in.boostTouch || Game.gp.run) && F.phase === 'cruise';
+    const boost = (K.shift || F.in.boostTouch || G.gp.run) && F.phase === 'cruise';
     const steering = Math.abs(ix) + Math.abs(iy) > 0.1;
     s.idle = steering ? 0 : s.idle + dt;
     // velocidad hacia delante
@@ -6376,7 +6376,7 @@ window.JSM = window.JSM || {};
 
   F.update = function (dt) {
     if (F.phase === 'done') return;
-    Game.pollGamepad();
+    G.pollGamepad();
     const asp = innerWidth / innerHeight;
     if (F.pad) { if (F.pad.cam.aspect !== asp) { F.pad.cam.aspect = asp; F.pad.cam.updateProjectionMatrix(); } updatePad(dt); }
     else if (F.space) { if (F.space.cam.aspect !== asp) { F.space.cam.aspect = asp; F.space.cam.updateProjectionMatrix(); } updateSpace(dt); }
@@ -7787,7 +7787,7 @@ window.JSM = window.JSM || {};
 /* --- indicador y botón de mando para Android/gamepad --- */
 (function(){
   var style = document.createElement('style');
-  style.textContent = '#gp-wrap{position:fixed;left:12px;bottom:12px;z-index:60;display:flex;flex-direction:column;gap:8px;pointer-events:none}#gp-connect{pointer-events:auto;background:rgba(15,24,44,.9);color:#ffd0d7;border:1px solid rgba(255,93,115,.6);border-radius:10px;padding:10px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(6px)}#gp-connect:hover{background:rgba(255,93,115,.2)}#gp-status{pointer-events:none;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.06);color:#46e3c6;font-size:12px;border:1px solid rgba(70,227,198,.35);display:none}';
+  style.textContent = '#gp-wrap{position:fixed;left:12px;top:12px;z-index:60;display:flex;flex-direction:column;gap:8px;pointer-events:none}#gp-connect{pointer-events:auto;background:rgba(15,24,44,.9);color:#ffd0d7;border:1px solid rgba(255,93,115,.6);border-radius:10px;padding:10px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(6px)}#gp-connect:hover{background:rgba(255,93,115,.2)}#gp-status{pointer-events:none;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.06);color:#46e3c6;font-size:12px;border:1px solid rgba(70,227,198,.35);display:none}';
   document.head.appendChild(style);
   var wrap = document.createElement('div'); wrap.id='gp-wrap';
   var btn = document.createElement('button'); btn.id='gp-connect'; btn.textContent='Conectar mando';

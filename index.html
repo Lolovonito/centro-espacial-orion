@@ -46,6 +46,7 @@ input,select{font:inherit}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
 .btn.primary:hover{background:#ffc56e}
 .btn.danger{background:rgba(255,93,115,.16);border-color:rgba(255,93,115,.5);color:#ffd0d7}
+.btn.gp-selected{background:rgba(70,227,198,.25);border-color:rgba(70,227,198,.7);box-shadow:0 0 14px rgba(70,227,198,.35)}
 .btn.small{padding:6px 10px;font-size:12px;border-radius:8px}
 .btn.ghost{background:transparent}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:rgba(255,255,255,.07);color:var(--muted)}
@@ -3478,6 +3479,8 @@ window.JSM = window.JSM || {};
     if (opts.sticky) m.querySelector('.x').hidden = !opts.closable;
     back.append(m); root.append(back);
     UI.modalOpen = { back, m, onClose: opts.onClose, name: opts.name };
+    UI.gpIdx = 0;
+    UI.gpButtons = [];
     JSM.Audio.sfx('open');
     if (JSM.Game.onModal) JSM.Game.onModal(true);
     return { body: m.querySelector('.body'), modal: m, footer: () => { const f = el('footer'); m.append(f); return f; } };
@@ -3485,6 +3488,8 @@ window.JSM = window.JSM || {};
   UI.closeModal = function (silent) {
     if (!UI.modalOpen) return;
     const mo = UI.modalOpen; UI.modalOpen = null;
+    UI.gpIdx = 0; UI.gpButtons = [];
+    document.querySelectorAll('.gp-selected').forEach(b => b.classList.remove('gp-selected'));
     mo.back.remove(); if (!silent) JSM.Audio.sfx('close');
     if (mo.onClose) mo.onClose();
     if (JSM.Game.onModal) JSM.Game.onModal(false);
@@ -4193,6 +4198,8 @@ window.JSM = window.JSM || {};
     Game.refreshMenu();
   };
   Game.refreshMenu = function () {
+    UI.gpIdx = 0; UI.gpMoved = false;
+    document.querySelectorAll('.gp-selected').forEach(b => b.classList.remove('gp-selected'));
     const nav = $('#menu-nav'); nav.innerHTML = '';
     const save = Sim.hasSave();
     const add = (label, sub, fn, cls, dis) => { const b = UI.el('button', 'btn ' + (cls || ''), '<span>' + label + '</span><small>' + (sub || '') + '</small>'); b.disabled = !!dis; b.onclick = () => { JSM.Audio.sfx('click'); fn(); }; b.onmouseenter = () => JSM.Audio.sfx('hover'); nav.append(b); return b; };
@@ -4607,7 +4614,27 @@ window.JSM = window.JSM || {};
       if (rise(1)) { JSM.Flight.toggleView(); }     // B / círculo: cambiar vista
       if (rise(9)) Game.onEscape();                 // Inicio / Opciones
     } else {
-      if (rise(9)) Game.onEscape();                 // Inicio / Opciones
+      // Navegación de menús con gamepad
+      let btns = [];
+      if (UI.modalOpen && UI.modalOpen.m) {
+        btns = Array.from(UI.modalOpen.m.querySelectorAll('button:not([disabled])')).filter(b => !b.classList.contains('x'));
+      } else if (Game.mode === 'menu') {
+        const mn = $('#menu-nav');
+        if (mn) btns = Array.from(mn.querySelectorAll('button:not([disabled])'));
+      }
+      if (btns.length > 0) {
+        if (UI.gpIdx == null || UI.gpIdx < 0 || UI.gpIdx >= btns.length) UI.gpIdx = 0;
+        const moved = (Game.gp.iz < -0.55 || Game.gp.iz > 0.55) && !UI.gpMoved;
+        if (rise(12) || moved && Game.gp.iz < -0.55) { UI.gpIdx = (UI.gpIdx - 1 + btns.length) % btns.length; UI.gpMoved = true; }
+        if (rise(13) || moved && Game.gp.iz > 0.55) { UI.gpIdx = (UI.gpIdx + 1) % btns.length; UI.gpMoved = true; }
+        if (Math.abs(Game.gp.iz) < 0.2) UI.gpMoved = false;
+        btns.forEach((b, i) => { b.classList.toggle('gp-selected', i === UI.gpIdx); if (i === UI.gpIdx) { b.focus(); } });
+        if (rise(0)) { btns[UI.gpIdx].click(); JSM.Audio.sfx('click'); }  // A
+        if (rise(1)) { if (UI.modalOpen) UI.closeModal(); }  // B / círculo
+        if (rise(9)) Game.onEscape();  // Start
+      } else {
+        if (rise(9)) Game.onEscape();
+      }
     }
   };
   Game.bindTouch = function () {

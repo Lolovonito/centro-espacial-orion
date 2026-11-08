@@ -4603,8 +4603,8 @@ window.JSM = window.JSM || {};
       if (rise(12)) Game.setSpeed(4);               // cruceta arriba
       if (rise(13)) Game.setSpeed(0);               // cruceta abajo
     } else if (mode === 'flight') {
-      if (rise(0)) { F.press(); }                   // A / cruz: despegar / aterrizar / saltar cuenta
-      if (rise(1)) { F.toggleView(); }              // B / círculo: cambiar vista
+      if (rise(0)) { JSM.Flight.press(); }          // A / cruz: despegar / aterrizar / saltar cuenta
+      if (rise(1)) { JSM.Flight.toggleView(); }     // B / círculo: cambiar vista
       if (rise(9)) Game.onEscape();                 // Inicio / Opciones
     } else {
       if (rise(9)) Game.onEscape();                 // Inicio / Opciones
